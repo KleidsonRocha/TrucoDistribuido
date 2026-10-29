@@ -1,0 +1,44 @@
+{
+  "name": "neuro-truco",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "npm run check && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "check": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "test": "node --experimental-strip-types --test --test-concurrency=1 tests/*.test.mjs",
+    "test:cluster": "node --experimental-strip-types --test tests/cluster.test.mjs",
+    "test:server": "node --experimental-strip-types --test tests/state.test.mjs tests/storage.test.mjs",
+    "test:client": "node --experimental-strip-types --test tests/client-online.test.mjs",
+    "test:docker": "node --experimental-strip-types scripts/check-docker.mjs",
+    "test:regression": "node --experimental-strip-types --test tests/demo.test.mjs tests/world3d.test.mjs tests/graphics-fallback.test.mjs tests/door-entry.test.mjs",
+    "test:tls": "node --experimental-strip-types scripts/check-tls.mjs",
+    "validate": "node scripts/validate.mjs",
+    "release": "node scripts/package-release.mjs",
+    "test:production": "node scripts/check-production.mjs"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "^0.186.1",
+    "ws": "^8.22.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.186.0",
+    "@types/ws": "^8.18.2",
+    "happy-dom": "^21.0.4",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

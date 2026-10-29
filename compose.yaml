@@ -1,0 +1,64 @@
+name: neuro
+x-game: &game
+  image: neuro-game:local
+  build:
+    context: .
+    target: game
+  restart: "no"
+  init: true
+  environment: &game-env
+    PORT: "3000"
+    PEERS_JSON: '[{"id":1,"url":"http://game-1:3000"},{"id":2,"url":"http://game-2:3000"},{"id":3,"url":"http://game-3:3000"}]'
+    CLUSTER_TOKEN: ${CLUSTER_TOKEN:-neuro-local-development-cluster-token-2026}
+    DATA_DIR: /data
+    HEARTBEAT_INTERVAL_MS: ${HEARTBEAT_INTERVAL_MS:-1000}
+    FAILURE_TIMEOUT_MS: ${FAILURE_TIMEOUT_MS:-4000}
+    RPC_TIMEOUT_MS: ${RPC_TIMEOUT_MS:-1500}
+    COORDINATOR_TIMEOUT_MS: ${COORDINATOR_TIMEOUT_MS:-6000}
+    PLAYER_GRACE_MS: ${PLAYER_GRACE_MS:-120000}
+    ENABLE_TEST_FAULTS: ${ENABLE_TEST_FAULTS:-0}
+  networks: [neuro]
+  healthcheck:
+    test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>r.json()).then(s=>process.exit(s.ready?0:1)).catch(()=>process.exit(1))"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+    start_period: 10s
+services:
+  game-1:
+    <<: *game
+    environment:
+      <<: *game-env
+      NODE_ID: "1"
+    volumes: [node-1:/data]
+  game-2:
+    <<: *game
+    environment:
+      <<: *game-env
+      NODE_ID: "2"
+    volumes: [node-2:/data]
+  game-3:
+    <<: *game
+    environment:
+      <<: *game-env
+      NODE_ID: "3"
+    volumes: [node-3:/data]
+  frontend:
+    image: neuro-frontend:local
+    build:
+      context: .
+      target: frontend
+    init: true
+    restart: "no"
+    environment:
+      PORT: "8080"
+      GATEWAY_NODES_JSON: '[{"id":1,"url":"http://game-1:3000"},{"id":2,"url":"http://game-2:3000"},{"id":3,"url":"http://game-3:3000"}]'
+    ports: ["127.0.0.1:${APP_PORT:-8080}:8080"]
+    depends_on: [game-1,game-2,game-3]
+    networks: [neuro]
+networks:
+  neuro:
+volumes:
+  node-1:
+  node-2:
+  node-3:

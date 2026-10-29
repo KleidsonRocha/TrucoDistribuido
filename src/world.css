@@ -1,0 +1,116 @@
+/* A interface faz parte do cenário. Coordenadas da arte: 1600 × 1000. */
+.turn-message small{display:block;max-width:90%;margin:7px auto 0;font-size:10px;line-height:1.5;color:#f3e2bb}
+.view-entrada .site-header,.view-salao .site-header,.view-painel .site-header{position:absolute;top:0;left:4.6%;right:4.6%;margin:0;height:93px;border-bottom:0;z-index:12}
+.view-entrada .site-header .wordmark,.view-salao .site-header .wordmark{text-shadow:0 2px 18px #0008}
+.camera-toggle{background:#16231ac7;border:1px solid #a6b08845;border-radius:3px;color:#d0d4b9;display:flex;align-items:center;gap:8px;padding:10px 13px;font-size:10px;line-height:1.5}
+.camera-toggle span{font-size:17px;color:var(--gold)}
+.camera-toggle[aria-pressed=true]{border-color:#d6be7a88;background:#293820}
+.view-entrada .phase-tag,.view-salao .phase-tag{background:#17241acf;border-color:#a1ad754d}
+.street-world,.hall-world{height:calc(100dvh - 79px);min-height:780px;position:relative;overflow:hidden;isolation:isolate;background:#22291d}
+.first-person-camera{position:absolute;inset:0;transform-origin:50% 55%;will-change:transform}
+.world-art{position:absolute;inset:0;width:100%;height:100%}
+.world-vignette{position:absolute;inset:0;box-shadow:inset 0 45px 100px #101a1377,inset 0 -60px 90px #101a1399,inset 100px 0 150px #101a1344,inset -100px 0 150px #101a1344;pointer-events:none;z-index:6}
+.world-button{position:absolute;z-index:7}
+.door-address{position:absolute;top:19%;right:6%;font-size:8px;color:#c6c19c;letter-spacing:1.4px;transform:rotate(1deg);text-align:right}
+.door-address span{display:block;margin-top:9px;font-size:7px;color:#a9af86}
+.door-sign{position:absolute;top:40.8%;left:50%;transform:translateX(-50%) rotate(-2deg);width:23.5%;min-width:286px;max-width:365px;padding:22px 26px 18px;background:#d9ceb0;color:#353c2b;box-shadow:3px 10px 30px #0c1c1ac2,inset 0 0 30px #9a895a22;border:1px solid #e4d9bb;z-index:5}
+.door-sign:before,.door-sign:after{content:'';position:absolute;width:1px;height:51px;background:#b7a47a;top:-48px;left:32px;transform:rotate(13deg);transform-origin:bottom}
+.door-sign:after{left:auto;right:32px;transform:rotate(-13deg)}
+.door-sign-pin{position:absolute;top:-8px;left:calc(50% - 3px);width:7px;height:7px;background:#514f38;border-radius:50%;box-shadow:0 2px 2px #242d2455}
+.door-open-label{font-size:8px;font-weight:bold;letter-spacing:2.1px;color:#617148;display:flex;gap:8px;align-items:center;justify-content:center}
+.door-open-label i{display:block;width:3px;height:3px;border-radius:50%;background:#667249}
+.door-sign h1{font-family:var(--serif);font-size:clamp(31px,3.1vw,46px);line-height:1;margin:15px 0 19px;text-align:center;letter-spacing:-1.8px}
+.door-sign h1 em{color:#6d7444}
+.door-sign label{font-size:10px;color:#485139;margin:0 0 8px;text-align:center}
+.door-sign input{display:block;width:100%;font-size:16px;background:#eee8d13b;border:0;border-bottom:1px solid #7b825b80;color:#303b27;text-align:center;padding:10px 0 11px;border-radius:0;outline-offset:3px}
+.door-sign input::placeholder{color:#7b8165}
+.door-sign input[aria-invalid=true]{border-color:#a24629}
+.door-sign .primary{background:#3c4e33;color:#f0e4bb;min-height:42px;padding:12px 14px;margin-top:16px;font-size:11px;gap:10px}
+.door-sign .primary:hover:not(:disabled){background:#50633c}
+.door-sign>p:last-child{font-size:8px;text-align:center;line-height:1.4;color:#697357;margin:11px 0 0}
+.door-sign .form-error{color:#8f3f26;font-size:10px;line-height:1.4;margin:8px 0}
+.door-welcome{position:absolute;top:71%;right:8%;font-family:var(--serif);font-size:clamp(17px,1.75vw,26px);color:#e3d6ac;line-height:1.4;transform:rotate(2deg);text-shadow:0 2px 12px #34332299}
+.door-welcome span{font-style:italic;color:#c2bd94}
+.street-chalk{top:69.5%;left:12%;background:#454944;border:8px solid #514634;box-shadow:4px 9px 15px #21291e66;transform:rotate(-5deg);padding:15px 20px;text-align:left;color:#f0eddb;font-family:'Courier New',monospace}
+.street-chalk>span:not(.chalk-arrow){display:block;font-size:22px;letter-spacing:-1px}.street-chalk .chalk-doodle{font-size:25px!important;margin-bottom:7px;color:#d9d4b9}
+.street-chalk small{font-size:10px;display:block;margin-top:6px}.street-chalk .chalk-arrow{position:absolute;right:12px;top:15px;font-size:20px;color:#d3cba1}
+.street-chalk:hover:not(:disabled){transform:rotate(-3deg) translateY(-3px)}
+.world-bottom-note{position:absolute;left:4.6%;right:4.6%;bottom:23px;display:flex;justify-content:space-between;gap:15px;z-index:10;color:#bebda0;font-size:7px;letter-spacing:1.7px;pointer-events:none}
+.world-bottom-note>span:last-child{color:#a7b18d;text-align:right}
+.journey-caption{position:absolute;bottom:13%;left:50%;transform:translateX(-50%);background:#1b291dde;backdrop-filter:blur(5px);border:1px solid #aeb77c55;padding:15px 23px;font-family:var(--serif);font-style:italic;font-size:20px;color:#ece0b9;z-index:20;white-space:nowrap;pointer-events:none}
+.door-leaf{transform-box:fill-box;transform-origin:left center;transition:transform 1.5s ease,opacity 1.2s ease}
+.walking-in .door-leaf{transform:perspective(700px) rotateY(-78deg);opacity:.35}
+.walking-in .door-sign{animation:sign-away 1.2s ease forwards}
+.walking-in .first-person-camera{animation:stumble-in 2.1s ease-in forwards;pointer-events:none}
+.walking-to-table .first-person-camera{animation:stumble-to-table 1.5s ease-in forwards;transform-origin:36% 76%;pointer-events:none}
+@keyframes stumble-in{0%{transform:scale(1) rotate(0)}17%{transform:translate(1%,.6%) scale(1.04) rotate(-1.1deg)}34%{transform:translate(-1.1%,-.5%) scale(1.14) rotate(1.4deg)}54%{transform:translate(1.2%,1.1%) scale(1.3) rotate(-1.5deg)}76%{transform:translate(-1.1%,-1%) scale(1.65) rotate(1.2deg);filter:brightness(1)}100%{transform:translate(.4%,-1.7%) scale(2.2) rotate(-.5deg);filter:brightness(.35)}}
+@keyframes stumble-to-table{0%{transform:scale(1)}25%{transform:translate(.8%,.5%) scale(1.07) rotate(-1.2deg)}55%{transform:translate(-1%,-.7%) scale(1.24) rotate(1.2deg)}82%{transform:translate(.7%,1%) scale(1.6) rotate(-.8deg)}100%{transform:scale(1.9);filter:brightness(.4)}}
+@keyframes sign-away{to{opacity:0;translate:0 18px}}
+.hall-world{min-height:860px}
+.hall-greeting{position:absolute;top:12%;left:50%;transform:translateX(-50%);z-index:4;text-align:center;width:60%;pointer-events:none}
+.hall-greeting>span{font-size:7px;letter-spacing:3px;color:#d2cc9f}
+.hall-greeting h1{font-size:clamp(23px,2.7vw,41px);margin:10px 0 8px;color:#e5dbb8;letter-spacing:-1.4px;text-shadow:0 2px 12px #17231d99;overflow-wrap:anywhere}
+.hall-greeting h1 em{color:#f1cd89}
+.hall-greeting p{color:#c3c7a7;font-size:10px;margin:0;text-shadow:0 2px 5px #17231d}
+.hall-chalk{left:5.5%;top:28%;width:15.5%;max-width:235px;min-width:155px;background:#454a46;border:10px solid #5d4a32;color:#eeeed8;padding:20px;box-shadow:8px 10px 24px #1c2d1e88;transform:perspective(600px) rotateY(12deg) rotate(1deg);font-family:'Courier New',monospace;text-align:center}
+.hall-chalk .chalk-doodle{display:block;color:#e1d5ab;font-size:27px;margin-bottom:9px}
+.hall-chalk strong{font-size:32px;font-weight:400;line-height:1.1;letter-spacing:-2px;display:block;text-shadow:1px 0 #fff4}
+.hall-chalk small{display:block;font-size:10px;line-height:1.7;margin-top:16px}
+.chalk-underline{display:block;width:40px;height:2px;background:#d8d5af;margin:15px auto}
+.hall-chalk b{font-weight:400;font-size:9px}
+.hall-chalk:hover:not(:disabled){transform:perspective(600px) rotateY(6deg) rotate(-1deg)}
+.bathroom-door{position:absolute;right:5%;top:27%;width:15%;max-width:225px;min-width:150px;height:38%;min-height:275px;background:repeating-linear-gradient(90deg,#4a5941 0,#4a5941 3px,#4d5b43 3px,#4d5b43 31px);border:11px solid #3e4532;box-shadow:inset -6px 0 16px #18251b55,8px 9px 20px #19281b77;transform:perspective(700px) rotateY(-15deg);text-align:center;color:#dedec0;padding:30px 15px}
+.bathroom-sign{position:absolute;top:-42px;left:12%;right:12%;background:#293c2b;color:#d0d6b3;padding:11px;font-size:16px;letter-spacing:4px;border:1px solid #71825a;box-shadow:0 4px 10px #0004}
+.bathroom-sign i{font-style:normal;position:absolute;right:10px;top:9px;font-size:16px;letter-spacing:0}
+.wc-symbols{display:block;font-size:39px;letter-spacing:8px;color:#ced3ac;line-height:1.2}
+.bathroom-door strong{display:block;letter-spacing:2px;font-size:10px;margin-top:12px;font-weight:400}
+.bathroom-door small{display:block;line-height:1.6;font-size:9px;color:#bdc7a2;margin-top:45px;font-family:'Courier New',monospace}
+.bathroom-handle{position:absolute;top:58%;left:14px;width:29px;height:7px;background:#c6be8e;box-shadow:0 4px 4px #1b2d2377;border-radius:3px}
+.bathroom-door:hover:not(:disabled){background-color:#5e714f;transform:perspective(700px) rotateY(-9deg)}
+.live-table-label{position:absolute;top:62%;background:#253a2bbf;color:#e0dcbc;padding:10px 12px;font-size:8px;letter-spacing:.4px;z-index:5;transform:translateX(-50%);border:1px solid #a6b17b36;text-align:center;border-radius:2px;pointer-events:none;backdrop-filter:blur(4px)}
+.live-table-left{left:37%}.live-table-right{left:67%}
+.live-table-label i{display:inline-block;width:4px;height:4px;background:#bdc483;border-radius:50%;margin-right:5px}
+.live-table-label small{display:block;font-size:6px;color:#b5be9b;margin-top:5px;letter-spacing:.6px}
+.seat-in-world{top:77%;transform:translate(-50%,-50%) rotate(-4deg);width:190px;padding:15px 17px;background:#ddd0a7;box-shadow:4px 6px 12px #1c251a66;color:#3f4b31;border:1px solid #ede0bb;text-align:left}
+.seat-left{left:26%}.seat-right{left:74%;transform:translate(-50%,-50%) rotate(4deg)}
+.seat-in-world>span{display:block;font-family:var(--serif);font-size:25px;border-bottom:1px solid #6b79534d;padding-bottom:7px;margin-bottom:9px;color:#758051}
+.seat-in-world strong{font-family:var(--serif);font-size:21px;font-weight:400;display:block}
+.seat-in-world small{display:block;font-size:9px;margin-top:8px;color:#67734e}
+.seat-in-world:hover:not(:disabled){background:#e9d9ad;transform:translate(-50%,-55%) rotate(-2deg)}
+.seat-right:hover:not(:disabled){transform:translate(-50%,-55%) rotate(2deg)}
+.invitation-note{left:50%;bottom:10%;transform:translateX(-50%) rotate(-2deg);background:#304630e8;border:1px solid #94a46a66;color:#dce1bd;padding:14px 19px;text-align:center;box-shadow:0 5px 15px #15281b55}
+.invitation-note>span{display:block;font-size:7px;letter-spacing:1.7px;color:#b1be92;margin-bottom:7px}
+.invitation-note strong{font-size:11px;font-weight:400;white-space:nowrap}
+.ambient-card{animation:idle-hand 4s ease-in-out infinite;transform-origin:center}
+.ambient-play{animation:idle-play 6s ease-in-out infinite}
+@keyframes idle-hand{0%,100%{translate:0 0}40%{translate:4px -4px}70%{translate:-2px 0}}
+@keyframes idle-play{0%,25%,100%{opacity:0;translate:0 -8px}40%,85%{opacity:1;translate:0 0}}
+/* Quadro cinza com giz, inclusive depois de aproximar para ler. */
+.rules-modal{background:repeating-linear-gradient(3deg,#ffffff02 0,#ffffff02 1px,transparent 1px,transparent 5px),#454a47;border:12px solid #69533b;box-shadow:inset 0 0 40px #20262355,0 20px 100px #0007;color:#f0f0dc;font-family:'Courier New',monospace}
+.rules-modal:after{content:'';position:absolute;bottom:9px;right:24px;width:38px;height:5px;background:#e9e5cd;transform:rotate(4deg);border-radius:2px;box-shadow:0 2px 3px #0004}
+.rules-modal h2{font-family:'Courier New',monospace;letter-spacing:-2px;font-size:35px;text-shadow:1px 0 #fff3}
+.rules-modal em,.rules-modal h3,.rules-modal .eyebrow,.rules-modal .rule-grid b,.rules-modal .rank-list li::marker{color:#e2d4a4}
+.rules-modal p,.rules-modal .rank-list li{color:#e6e6d5}.rules-modal .fine-print{color:#d5d6c1}
+.rules-modal .primary{background:#d8d7bb;color:#3c4737}
+/* O banheiro é uma sala separada; o painel fica no quadro de manutenção. */
+.bathroom-page{position:relative;min-height:calc(100dvh - 79px);padding:112px 10% 65px;isolation:isolate;overflow:hidden}
+.bathroom-art{position:absolute;inset:0;width:100%;height:100%;z-index:-2;filter:brightness(.65)}
+.bathroom-page:after{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at 50% 15%,#dfdea318,transparent 70%);box-shadow:inset 0 0 100px #17231a66;pointer-events:none}
+.bathroom-topbar{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:23px;color:#e7e6cd}
+.bathroom-topbar>span{font-size:9px;letter-spacing:2px;background:#28352acc;padding:11px 14px;border:1px solid #8e9a7055}
+.bathroom-exit{background:#303f2bdd;color:#e3e2c3;border:1px solid #9faa7a77;font-size:11px;padding:12px 15px;box-shadow:0 3px 9px #17241c33}
+.bathroom-monitor{background:#232c25;border:9px solid #777b64;border-bottom-width:20px;border-radius:5px;box-shadow:inset 0 0 20px #101c17,0 10px 45px #14211988;position:relative}
+.bathroom-monitor:before{content:'QUADRO DE MANUTENÇÃO · NÃO É PRA DAR DESCARGA NO LÍDER';position:absolute;top:-19px;left:50%;transform:translateX(-50%) rotate(-1deg);background:#d0c7a6;padding:9px 17px;color:#46523a;font-family:'Courier New',monospace;font-size:8px;letter-spacing:.3px;white-space:nowrap;box-shadow:0 3px 7px #16241955}
+.bathroom-monitor .technical-page{padding:39px 30px 30px}
+.bathroom-monitor .section-heading h1{font-size:45px}.bathroom-monitor .section-heading h1 em{color:#ced3ad}
+.bathroom-monitor .eyebrow{color:#bcc8a5}.bathroom-monitor .offline-label{font-size:7px;letter-spacing:.5px}
+.bathroom-monitor .node-card{padding:18px}.bathroom-monitor .node-card h2{font-size:27px}
+.bathroom-monitor .protocol-preview{gap:24px;padding:24px}.bathroom-monitor .step-controls{gap:10px}
+.bathroom-monitor .step-controls button{font-size:9px;padding:10px 12px}
+.bathroom-floor-note{position:relative;margin-top:27px;color:#c3c8aa;font-family:'Courier New',monospace;text-align:center;font-size:9px;transform:rotate(-1deg)}
+.camera-stable .first-person-camera,.camera-stable .door-sign,.camera-stable .ambient-card,.camera-stable .ambient-play{animation:none!important}
+.camera-stable .door-leaf{transition:none!important}
+@media(min-width:1600px){.door-sign{padding:28px 30px 22px}.door-sign h1{font-size:48px}.door-sign input{padding:13px 0}.door-sign .primary{margin-top:19px}.hall-chalk{padding:26px}.hall-chalk strong{font-size:39px}.seat-in-world{width:215px;padding:20px}}
+@media(max-width:1100px){.door-welcome{right:5%;font-size:20px;max-width:22%}.door-sign{padding:21px 23px 17px}.street-chalk{left:8%;padding:15px}.street-chalk>span:not(.chalk-arrow){font-size:19px}.hall-chalk{left:4%;padding:17px 12px;min-width:143px}.hall-chalk strong{font-size:29px}.bathroom-door{right:4%;min-width:136px;border-width:8px;padding:26px 10px}.bathroom-sign{font-size:13px}.bathroom-sign i{font-size:14px;right:5px}.wc-symbols{font-size:30px}.bathroom-door small{font-size:8px}.bathroom-page{padding-left:6%;padding-right:6%}.bathroom-monitor .technical-page{padding:35px 23px 25px}.bathroom-monitor .section-heading{align-items:flex-start;gap:15px}.bathroom-monitor .offline-label{max-width:165px;line-height:1.6}.bathroom-monitor .node-grid{gap:12px}.bathroom-monitor .node-card{padding:14px}.bathroom-monitor .node-card dl>div{font-size:9px}.bathroom-monitor .protocol-preview{grid-template-columns:1.1fr 1fr;padding:20px;gap:20px}.bathroom-monitor .step-controls{gap:8px}.bathroom-monitor .step-controls button{font-size:8px;padding:10px}.bathroom-monitor .step-controls>span{font-size:9px}}
+@media(max-width:760px){.view-entrada .site-header,.view-salao .site-header,.view-painel .site-header{height:84px;left:5%;right:5%;gap:10px;align-content:center;flex-wrap:nowrap}.site-header nav{gap:0}.camera-toggle{max-width:128px;font-size:8px;padding:6px 8px;gap:5px;line-height:1.4}.camera-toggle span{font-size:15px}.view-entrada .phase-tag,.view-salao .phase-tag,.view-painel .phase-tag{position:absolute;top:80px;left:auto;right:0;padding:6px 8px;font-size:7px}.street-world{height:calc(100dvh - 95px);min-height:780px}.street-art{width:200%;left:-50%}.door-sign{top:40%;min-width:0;width:68%;max-width:340px;padding:20px 23px 17px}.door-sign h1{font-size:37px;margin:14px 0 18px}.door-sign label{font-size:9px}.door-sign .primary{font-size:10px;padding:12px;gap:10px}.door-sign>p:last-child{font-size:7px}.door-open-label{font-size:7px;letter-spacing:1.3px}.door-address{top:16%;right:5%;font-size:6px;letter-spacing:.8px}.door-address span{font-size:5px}.door-welcome{display:none}.street-chalk{top:83%;left:10%;padding:10px 14px;border-width:5px;transform:rotate(-4deg)}.street-chalk>span:not(.chalk-arrow){font-size:17px}.street-chalk .chalk-doodle{display:none!important}.street-chalk small{font-size:8px}.street-chalk .chalk-arrow{font-size:16px;right:7px;top:7px}.world-bottom-note{bottom:17px;left:5%;right:5%;font-size:5px;letter-spacing:.8px;gap:20px;line-height:1.6}.world-bottom-note>span:first-child{max-width:68%}.world-bottom-note>span:last-child{max-width:30%}.journey-caption{font-size:16px;padding:12px 17px;bottom:8%;max-width:90%;white-space:normal;text-align:center}.hall-world{height:calc(100dvh - 95px);min-height:890px}.hall-greeting{top:15%;width:90%}.hall-greeting>span{font-size:6px;letter-spacing:2px}.hall-greeting h1{font-size:29px;margin:10px 0 7px}.hall-greeting p{font-size:9px}.hall-chalk{top:31%;left:3.5%;width:27%;min-width:0;padding:13px 7px;border-width:6px}.hall-chalk .chalk-doodle{font-size:20px;margin-bottom:8px}.hall-chalk strong{font-size:23px;letter-spacing:-1.7px}.hall-chalk small{font-size:7px;line-height:1.7;margin-top:12px}.chalk-underline{margin:12px auto;width:28px}.hall-chalk b{font-size:7px}.bathroom-door{top:33%;right:3.5%;width:27%;min-width:0;height:27%;min-height:0;border-width:6px;padding:22px 7px}.bathroom-sign{top:-34px;padding:8px 7px;font-size:12px;left:6%;right:6%;letter-spacing:2px}.bathroom-sign i{font-size:11px;top:8px;right:5px}.wc-symbols{font-size:27px;letter-spacing:2px}.bathroom-door strong{font-size:7px;letter-spacing:1px;margin-top:10px}.bathroom-door small{font-size:7px;line-height:1.6;margin-top:46px}.bathroom-handle{left:9px;width:20px;height:5px;top:58%}.live-table-label{top:61%;padding:7px 6px;font-size:6px;letter-spacing:0;white-space:nowrap}.live-table-left{left:34%}.live-table-right{left:67%}.live-table-label small{font-size:5px;margin-top:4px}.live-table-label i{width:3px;height:3px;margin-right:3px}.seat-in-world{top:78%;width:36%;padding:12px;border-color:#e5d9b4}.seat-left{left:25%}.seat-right{left:75%}.seat-in-world>span{font-size:23px;padding-bottom:6px;margin-bottom:8px}.seat-in-world strong{font-size:20px}.seat-in-world small{font-size:7px;line-height:1.5;margin-top:7px}.invitation-note{bottom:7%;padding:12px 16px;min-width:175px}.invitation-note>span{font-size:6px;letter-spacing:1.4px}.invitation-note strong{font-size:10px}.bathroom-page{padding:131px 5% 45px}.bathroom-topbar{margin-bottom:28px;gap:10px}.bathroom-topbar>span{font-size:6px;letter-spacing:.7px;padding:9px;max-width:140px}.bathroom-exit{font-size:9px;padding:10px}.bathroom-monitor{border-width:6px;border-bottom-width:15px}.bathroom-monitor:before{font-size:5px;padding:7px 9px;top:-15px;max-width:100%;white-space:normal;text-align:center;width:90%;line-height:1.5}.bathroom-monitor .technical-page{padding:32px 16px 22px}.bathroom-monitor .section-heading h1{font-size:36px}.bathroom-monitor .offline-label{max-width:none;font-size:6px;margin-top:17px}.bathroom-monitor .node-card{padding:17px}.bathroom-monitor .node-card dl>div{font-size:10px}.bathroom-monitor .protocol-preview{padding:17px;gap:23px}.bathroom-monitor .protocol-preview h2{font-size:25px}.bathroom-monitor .protocol-preview p{font-size:10px}.bathroom-monitor .step-controls{gap:6px}.bathroom-monitor .step-controls button{padding:9px 8px;font-size:8px}.bathroom-monitor .step-controls>span{font-size:8px}.bathroom-monitor .flow-diagram{font-size:9px}.bathroom-floor-note{font-size:7px}.rules-modal{border-width:8px}.rules-modal h2{font-size:29px}.rules-modal .rank-list li{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.first-person-camera,.door-sign,.ambient-card,.ambient-play{animation:none!important}.door-leaf{transition:none!important}.world-button{transition:none!important}}

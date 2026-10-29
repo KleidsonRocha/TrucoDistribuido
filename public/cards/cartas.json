@@ -1,0 +1,329 @@
+{
+  "cartas": [
+    {
+      "id": "espadas_01",
+      "naipe": "espadas",
+      "numero": 1,
+      "svg": "svg/espadas_01.svg",
+      "png": "png/espadas_01.png",
+      "png_web": "png_web/espadas_01.png"
+    },
+    {
+      "id": "espadas_02",
+      "naipe": "espadas",
+      "numero": 2,
+      "svg": "svg/espadas_02.svg",
+      "png": "png/espadas_02.png",
+      "png_web": "png_web/espadas_02.png"
+    },
+    {
+      "id": "espadas_03",
+      "naipe": "espadas",
+      "numero": 3,
+      "svg": "svg/espadas_03.svg",
+      "png": "png/espadas_03.png",
+      "png_web": "png_web/espadas_03.png"
+    },
+    {
+      "id": "espadas_04",
+      "naipe": "espadas",
+      "numero": 4,
+      "svg": "svg/espadas_04.svg",
+      "png": "png/espadas_04.png",
+      "png_web": "png_web/espadas_04.png"
+    },
+    {
+      "id": "espadas_05",
+      "naipe": "espadas",
+      "numero": 5,
+      "svg": "svg/espadas_05.svg",
+      "png": "png/espadas_05.png",
+      "png_web": "png_web/espadas_05.png"
+    },
+    {
+      "id": "espadas_06",
+      "naipe": "espadas",
+      "numero": 6,
+      "svg": "svg/espadas_06.svg",
+      "png": "png/espadas_06.png",
+      "png_web": "png_web/espadas_06.png"
+    },
+    {
+      "id": "espadas_07",
+      "naipe": "espadas",
+      "numero": 7,
+      "svg": "svg/espadas_07.svg",
+      "png": "png/espadas_07.png",
+      "png_web": "png_web/espadas_07.png"
+    },
+    {
+      "id": "espadas_10",
+      "naipe": "espadas",
+      "numero": 10,
+      "svg": "svg/espadas_10.svg",
+      "png": "png/espadas_10.png",
+      "png_web": "png_web/espadas_10.png"
+    },
+    {
+      "id": "espadas_11",
+      "naipe": "espadas",
+      "numero": 11,
+      "svg": "svg/espadas_11.svg",
+      "png": "png/espadas_11.png",
+      "png_web": "png_web/espadas_11.png"
+    },
+    {
+      "id": "espadas_12",
+      "naipe": "espadas",
+      "numero": 12,
+      "svg": "svg/espadas_12.svg",
+      "png": "png/espadas_12.png",
+      "png_web": "png_web/espadas_12.png"
+    },
+    {
+      "id": "bastos_01",
+      "naipe": "bastos",
+      "numero": 1,
+      "svg": "svg/bastos_01.svg",
+      "png": "png/bastos_01.png",
+      "png_web": "png_web/bastos_01.png"
+    },
+    {
+      "id": "bastos_02",
+      "naipe": "bastos",
+      "numero": 2,
+      "svg": "svg/bastos_02.svg",
+      "png": "png/bastos_02.png",
+      "png_web": "png_web/bastos_02.png"
+    },
+    {
+      "id": "bastos_03",
+      "naipe": "bastos",
+      "numero": 3,
+      "svg": "svg/bastos_03.svg",
+      "png": "png/bastos_03.png",
+      "png_web": "png_web/bastos_03.png"
+    },
+    {
+      "id": "bastos_04",
+      "naipe": "bastos",
+      "numero": 4,
+      "svg": "svg/bastos_04.svg",
+      "png": "png/bastos_04.png",
+      "png_web": "png_web/bastos_04.png"
+    },
+    {
+      "id": "bastos_05",
+      "naipe": "bastos",
+      "numero": 5,
+      "svg": "svg/bastos_05.svg",
+      "png": "png/bastos_05.png",
+      "png_web": "png_web/bastos_05.png"
+    },
+    {
+      "id": "bastos_06",
+      "naipe": "bastos",
+      "numero": 6,
+      "svg": "svg/bastos_06.svg",
+      "png": "png/bastos_06.png",
+      "png_web": "png_web/bastos_06.png"
+    },
+    {
+      "id": "bastos_07",
+      "naipe": "bastos",
+      "numero": 7,
+      "svg": "svg/bastos_07.svg",
+      "png": "png/bastos_07.png",
+      "png_web": "png_web/bastos_07.png"
+    },
+    {
+      "id": "bastos_10",
+      "naipe": "bastos",
+      "numero": 10,
+      "svg": "svg/bastos_10.svg",
+      "png": "png/bastos_10.png",
+      "png_web": "png_web/bastos_10.png"
+    },
+    {
+      "id": "bastos_11",
+      "naipe": "bastos",
+      "numero": 11,
+      "svg": "svg/bastos_11.svg",
+      "png": "png/bastos_11.png",
+      "png_web": "png_web/bastos_11.png"
+    },
+    {
+      "id": "bastos_12",
+      "naipe": "bastos",
+      "numero": 12,
+      "svg": "svg/bastos_12.svg",
+      "png": "png/bastos_12.png",
+      "png_web": "png_web/bastos_12.png"
+    },
+    {
+      "id": "oros_01",
+      "naipe": "oros",
+      "numero": 1,
+      "svg": "svg/oros_01.svg",
+      "png": "png/oros_01.png",
+      "png_web": "png_web/oros_01.png"
+    },
+    {
+      "id": "oros_02",
+      "naipe": "oros",
+      "numero": 2,
+      "svg": "svg/oros_02.svg",
+      "png": "png/oros_02.png",
+      "png_web": "png_web/oros_02.png"
+    },
+    {
+      "id": "oros_03",
+      "naipe": "oros",
+      "numero": 3,
+      "svg": "svg/oros_03.svg",
+      "png": "png/oros_03.png",
+      "png_web": "png_web/oros_03.png"
+    },
+    {
+      "id": "oros_04",
+      "naipe": "oros",
+      "numero": 4,
+      "svg": "svg/oros_04.svg",
+      "png": "png/oros_04.png",
+      "png_web": "png_web/oros_04.png"
+    },
+    {
+      "id": "oros_05",
+      "naipe": "oros",
+      "numero": 5,
+      "svg": "svg/oros_05.svg",
+      "png": "png/oros_05.png",
+      "png_web": "png_web/oros_05.png"
+    },
+    {
+      "id": "oros_06",
+      "naipe": "oros",
+      "numero": 6,
+      "svg": "svg/oros_06.svg",
+      "png": "png/oros_06.png",
+      "png_web": "png_web/oros_06.png"
+    },
+    {
+      "id": "oros_07",
+      "naipe": "oros",
+      "numero": 7,
+      "svg": "svg/oros_07.svg",
+      "png": "png/oros_07.png",
+      "png_web": "png_web/oros_07.png"
+    },
+    {
+      "id": "oros_10",
+      "naipe": "oros",
+      "numero": 10,
+      "svg": "svg/oros_10.svg",
+      "png": "png/oros_10.png",
+      "png_web": "png_web/oros_10.png"
+    },
+    {
+      "id": "oros_11",
+      "naipe": "oros",
+      "numero": 11,
+      "svg": "svg/oros_11.svg",
+      "png": "png/oros_11.png",
+      "png_web": "png_web/oros_11.png"
+    },
+    {
+      "id": "oros_12",
+      "naipe": "oros",
+      "numero": 12,
+      "svg": "svg/oros_12.svg",
+      "png": "png/oros_12.png",
+      "png_web": "png_web/oros_12.png"
+    },
+    {
+      "id": "copas_01",
+      "naipe": "copas",
+      "numero": 1,
+      "svg": "svg/copas_01.svg",
+      "png": "png/copas_01.png",
+      "png_web": "png_web/copas_01.png"
+    },
+    {
+      "id": "copas_02",
+      "naipe": "copas",
+      "numero": 2,
+      "svg": "svg/copas_02.svg",
+      "png": "png/copas_02.png",
+      "png_web": "png_web/copas_02.png"
+    },
+    {
+      "id": "copas_03",
+      "naipe": "copas",
+      "numero": 3,
+      "svg": "svg/copas_03.svg",
+      "png": "png/copas_03.png",
+      "png_web": "png_web/copas_03.png"
+    },
+    {
+      "id": "copas_04",
+      "naipe": "copas",
+      "numero": 4,
+      "svg": "svg/copas_04.svg",
+      "png": "png/copas_04.png",
+      "png_web": "png_web/copas_04.png"
+    },
+    {
+      "id": "copas_05",
+      "naipe": "copas",
+      "numero": 5,
+      "svg": "svg/copas_05.svg",
+      "png": "png/copas_05.png",
+      "png_web": "png_web/copas_05.png"
+    },
+    {
+      "id": "copas_06",
+      "naipe": "copas",
+      "numero": 6,
+      "svg": "svg/copas_06.svg",
+      "png": "png/copas_06.png",
+      "png_web": "png_web/copas_06.png"
+    },
+    {
+      "id": "copas_07",
+      "naipe": "copas",
+      "numero": 7,
+      "svg": "svg/copas_07.svg",
+      "png": "png/copas_07.png",
+      "png_web": "png_web/copas_07.png"
+    },
+    {
+      "id": "copas_10",
+      "naipe": "copas",
+      "numero": 10,
+      "svg": "svg/copas_10.svg",
+      "png": "png/copas_10.png",
+      "png_web": "png_web/copas_10.png"
+    },
+    {
+      "id": "copas_11",
+      "naipe": "copas",
+      "numero": 11,
+      "svg": "svg/copas_11.svg",
+      "png": "png/copas_11.png",
+      "png_web": "png_web/copas_11.png"
+    },
+    {
+      "id": "copas_12",
+      "naipe": "copas",
+      "numero": 12,
+      "svg": "svg/copas_12.svg",
+      "png": "png/copas_12.png",
+      "png_web": "png_web/copas_12.png"
+    }
+  ],
+  "verso": {
+    "svg": "svg/verso.svg",
+    "png": "png/verso.png",
+    "png_web": "png_web/verso.png"
+  }
+}

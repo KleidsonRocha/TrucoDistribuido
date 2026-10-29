@@ -1,0 +1,27 @@
+# Use junto ao compose.yaml. O Nginx existente termina HTTPS na VPS.
+x-production-node: &production-node
+  restart: unless-stopped
+  environment:
+    CLUSTER_TOKEN: ${CLUSTER_TOKEN:?Defina CLUSTER_TOKEN em .env.production}
+    ENABLE_TEST_FAULTS: "0"
+  logging: &production-logs
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+services:
+  game-1:
+    <<: *production-node
+  game-2:
+    <<: *production-node
+  game-3:
+    <<: *production-node
+  frontend:
+    restart: unless-stopped
+    logging: *production-logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s

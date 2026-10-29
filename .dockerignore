@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.env
+.env.production
+release
+.qa
+.test-data
+data
+*.log
+
+.test-data-*

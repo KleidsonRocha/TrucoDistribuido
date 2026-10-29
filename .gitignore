@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.production
+release/
+*.log
+.qa/
+data/
+.test-data/
+
+.test-data-*/
