@@ -1,95 +1,229 @@
-# Neuro · Fase 2
+# Neuro — Bar & Truco
 
-Truco argentino simplificado por vitórias, para **dois jogadores humanos**, em um bar 3D. A fase de desenvolvimento (60%) integra o cenário aprovado a três servidores reais de jogo, eleição Bully, heartbeat, Lamport, replicação durável e reconexão. A Fase 3 aguarda sua revisão desta entrega.
+**Neuro** é um jogo de truco argentino simplificado para dois jogadores humanos, ambientado em um bar brasileiro em 3D. A experiência começa na porta do bar, passa pelo salão e termina em uma mesa, com cartas, placar e convite por código.
 
-## Abrir o projeto
+O projeto foi desenvolvido para a disciplina de **Sistemas Distribuídos**. Além do jogo, implementa três servidores que se comunicam, elegem um líder, replicam o estado das partidas e recuperam a execução após a falha de um nó.
 
-Requer Docker Desktop iniciado, com contêineres Linux. Na pasta do projeto:
+## Funcionalidades
 
-```powershell
+- Entrada por apelido, criação de mesa e convite por código.
+- Partidas online entre duas sessões de navegador, com turnos validados pelo servidor.
+- Distribuição de cartas, resolução de empates, placar até cinco vitórias e revanche.
+- Reconexão à mesma mesa, preservando cartas, placar e turno confirmados.
+- Cenário em primeira pessoa, caminhada guiada e mesas em perspectiva.
+- Quadro de regras e painel técnico acessível pelo banheiro do bar.
+- Opções de câmera estável, gráficos leves e cenário ilustrado de contingência.
+
+Os jogadores ao fundo do salão são elementos decorativos. O adversário sentado à sua mesa é outro jogador conectado.
+
+## Tecnologias
+
+| Camada | Tecnologias | Responsabilidade |
+| --- | --- | --- |
+| Interface | React, TypeScript e CSS | Telas, navegação, cartas e interação com o jogador |
+| Cenário 3D | Three.js, React Three Fiber e Drei | Ambiente WebGL, iluminação, objetos e câmera |
+| Ferramentas web | Vite | Desenvolvimento da interface e build de produção |
+| Servidores | Node.js e TypeScript | Regras autoritativas, sessões, salas e coordenação do cluster |
+| Contratos | Zod | Validação das mensagens e das estruturas de dados |
+| Comunicação com o navegador | WebSocket, biblioteca `ws` | Comandos e atualizações da partida em tempo real |
+| Comunicação entre nós | HTTP com JSON | Heartbeat, eleição, replicação e sincronização |
+| Persistência | WAL, SHA-256 e `fsync` | Diários duráveis por nó e verificação da cadeia de operações |
+| Infraestrutura | Docker e Docker Compose | Execução dos serviços, rede, descoberta por DNS e volumes |
+| Publicação na VPS | Nginx e Certbot | Proxy HTTPS/WSS e certificado do subdomínio |
+| Testes | Node Test Runner e Happy DOM | Regras, protocolo, cliente, persistência e cenários de falha |
+
+## Arquitetura
+
+O Compose executa quatro serviços: **três nós de jogo**, usando o mesmo programa, e um **frontend/gateway**, que serve a interface e encaminha as conexões aos nós.
+
+```mermaid
+flowchart TD
+    A[Navegador A] -->|WebSocket| G[Frontend / gateway]
+    B[Navegador B] -->|WebSocket| G
+    G --> N1[Nó 1 + diário próprio]
+    G --> N2[Nó 2 + diário próprio]
+    G --> N3[Nó 3 + diário próprio]
+    N1 <-->|HTTP / JSON| N2
+    N2 <-->|HTTP / JSON| N3
+    N3 <-->|HTTP / JSON| N1
+```
+
+O líder valida e ordena os comandos. Se um navegador estiver conectado a um seguidor, esse nó encaminha o comando ao líder. Antes da confirmação ao jogador, a operação deve ser gravada e aplicada em todos os participantes da configuração ativa, com mínimo de dois nós.
+
+| Mecanismo distribuído | Aplicação no Neuro |
+| --- | --- |
+| Descoberta por DNS | Os serviços encontram os pares pelos nomes configurados no Compose |
+| Heartbeat | Os nós verificam periodicamente a disponibilidade dos pares |
+| Eleição Bully | O maior ID apto e disponível pode assumir a liderança |
+| Relógios de Lamport | Envios, recebimentos e eventos recebem marcações lógicas |
+| Replicação durável | Preparação e decisão são registradas nos diários dos participantes |
+| Épocas e recuperação | Uma nova liderança instala um estado comum antes de aceitar comandos |
+| Deduplicação | O reenvio do mesmo `commandId` recupera seu resultado sem repetir o efeito |
+| Visões privadas | Cada navegador recebe suas cartas e apenas a quantidade de cartas ocultas do adversário |
+
+O painel técnico mostra os dados reais dos processos: líder, disponibilidade, épocas, Lamport, versões, hashes e histórico de eventos. Consulte a [arquitetura detalhada](docs/02-arquitetura.md) e o [protocolo de comunicação](docs/03-protocolo.md).
+
+## Organização do projeto
+
+```text
+src/                       Interface React e apresentação
+  main.tsx                 Entrada, navegação e integração das telas
+  GameTable.tsx            Mesa online, cartas, turnos e placar
+  TechnicalPanel.tsx       Painel técnico do cluster
+  World3D.tsx              Cenário tridimensional
+  scene/                   Layout, câmera e texturas do cenário
+  network/                 WebSocket, reconexão e consultas aos nós
+  rules.ts                 Hierarquia das cartas e resolução de pardas
+server/                    Processos de jogo e gateway
+  index.ts                 Servidor HTTP/WebSocket de cada nó
+  state.ts                 Estado autoritativo, salas e regras da partida
+  cluster.ts               Eleição, Lamport, replicação e recuperação
+  storage.ts               Diário persistente e checkpoints
+  transport.ts             Transporte HTTP e resolução DNS
+  config.ts                Configuração e validação dos pares
+  gateway.ts               Interface web e proxy para os nós
+shared/                    Contratos compartilhados e schemas Zod
+public/cards/              Cartas, catálogo, créditos e licença
+tests/                    Testes automatizados e clientes de apoio
+scripts/                   Validação, demonstração de falhas e empacotamento
+deploy/                   Configurações Nginx e hook de renovação do certificado
+docs/                     Regras, arquitetura, protocolo e registros de validação
+compose.yaml               Ambiente de execução e demonstração
+compose.production.yaml    Ajustes para operação na VPS
+Dockerfile                 Imagens dos nós e do frontend
+```
+
+Os diários de teste ficam em `.test-data/` e os relatórios de execução em `.qa/`. Essas pastas são ignoradas pelo Git e pelo Docker. O módulo `src/demo.ts` conserva a simulação original para testes de regressão; a mesa online utiliza o estado enviado pelos servidores.
+
+## Executar com Docker
+
+Requisitos: Docker Engine ou Docker Desktop com contêineres Linux e Docker Compose.
+
+Na raiz do projeto:
+
+```bash
 docker compose up -d --build
 docker compose ps
 ```
 
-Abra **http://127.0.0.1:8080**. Aguarde os três serviços `game-*` ficarem `healthy`. A primeira construção baixa dependências e pode demorar. Não é necessário Node instalado no Windows para executar pelo Docker.
+Abra **http://127.0.0.1:8080** quando os três serviços `game-*` estiverem `healthy`. Para executar pelo Docker, não é necessário instalar Node.js na máquina hospedeira.
 
-Abra outro navegador, perfil ou janela anônima para o segundo jogador. Entre com dois apelidos. Um cria a mesa; o outro usa o código real da comanda ou a lista de mesas. **NEURO1 era um convite do protótipo; agora os códigos são gerados pelo servidor.** Os dois clicam em “Estou pronto”. Entre vazas/mãos e na revanche, os dois confirmam. Cada mão soma uma vitória; a partida termina em cinco.
+Para jogar:
 
-A sessão é conservada em `sessionStorage`: atualizar a mesma aba retoma sua mesa. Fechar a aba pode perder a credencial; não há conta/cadastro. Evite duplicar uma aba já conectada: alguns navegadores copiam seu `sessionStorage`. Outra janela anônima/perfil oferece uma segunda identidade independente. Um jogador desconectado pausa a partida; após 120 segundos sem retorno ela é encerrada. Sair da mesa encerra a partida para ambos.
+1. Abra dois navegadores, perfis ou uma janela normal e outra anônima.
+2. Entre com os apelidos. Um jogador cria a mesa e compartilha o código da comanda.
+3. O segundo entra pelo código ou pela lista de mesas do salão.
+4. Os dois confirmam “Estou pronto”. As próximas vazas, mãos e a revanche também exigem confirmação dos dois.
 
-O botão de câmera estável, gráficos leves e a alternativa ilustrada continuam disponíveis. Os jogadores de fundo são decorativos; o adversário na sua mesa é uma pessoa real.
+A sessão fica em `sessionStorage`: atualizar a mesma aba permite retomar a mesa. Fechar a aba pode perder a credencial de retomada. Evite duplicar uma aba conectada para criar o segundo jogador, pois o navegador pode copiar seu armazenamento de sessão.
 
-## Demonstrar os requisitos
+Para desligar os serviços, use `docker compose stop`; para retomá-los, `docker compose up -d`. Os dados dos nós ficam em volumes separados. Remover esses volumes elimina o estado persistido.
 
-O **banheiro** abre o painel técnico. Também pode abrir http://127.0.0.1:8080/#painel em uma terceira aba, sem entrar na partida. Ele mostra os processos reais, líder, épocas, heartbeat, Lamport, índices aplicados/publicados, hash e histórico.
+## Regras do jogo
 
-Roteiro completo: [TESTAR.md](TESTAR.md). Para parar e recuperar o seguidor 1:
+A modalidade é **truco argentino simplificado, por vitórias**: baralho espanhol de 40 cartas, três cartas por jogador e até três vazas por mão. Cada mão vencida soma uma vitória; vence quem alcançar cinco. A saída da mão alterna entre os jogadores. Não há envido, flor ou aumentos de aposta.
 
-```powershell
-docker compose stop game-1
-docker compose start game-1
+A hierarquia completa, os empates e a saída de cada vaza estão em [Escopo e regras](docs/01-escopo-regras.md) e no quadro “Como jogar” da interface. O servidor distribui as cartas, valida as jogadas e decide os resultados.
+
+## Desenvolvimento e configuração
+
+Para desenvolver a interface, use **Node.js 24** e npm, mantendo o backend do Compose em execução:
+
+```bash
+npm install
+npm run dev
 ```
 
-Aguarde a sincronização e os três nós prontos antes de derrubar o líder indicado no painel. Normalmente será o 3:
+O Vite informa a URL de desenvolvimento e encaminha as rotas do cluster ao gateway em `http://127.0.0.1:8080`. No PowerShell, use `npm.cmd` se a política de execução bloquear `npm.ps1`. Para uma instalação limpa com versões do lockfile, use `npm ci`, com o servidor de desenvolvimento encerrado.
 
-```powershell
-docker compose stop game-3
-docker compose start game-3
+O ambiente local utiliza os valores do Compose. Para personalizá-los, copie `.env.example` para `.env`.
+
+| Variável | Finalidade |
+| --- | --- |
+| `APP_PORT` | Porta HTTP publicada pelo gateway; padrão local `8080` |
+| `CLUSTER_TOKEN` | Segredo compartilhado para autenticar RPCs entre os nós |
+| `PEERS_JSON` | IDs e endereços internos dos três nós, definidos no Compose |
+| `HEARTBEAT_INTERVAL_MS` | Intervalo entre verificações de disponibilidade |
+| `FAILURE_TIMEOUT_MS` | Prazo para suspeitar da falha de um par |
+| `RPC_TIMEOUT_MS` | Timeout de uma chamada entre nós |
+| `COORDINATOR_TIMEOUT_MS` | Prazo para aguardar a coordenação de uma eleição |
+| `PLAYER_GRACE_MS` | Prazo de retomada após detectar a desconexão de um jogador |
+| `ENABLE_TEST_FAULTS` | Habilita pontos de falha controlada; manter `0` no uso normal |
+| `NEURO_GATEWAY_URL` | Destino do proxy do Vite quando o gateway usa outra porta |
+
+## Testes e validação
+
+```bash
+npm run validate
 ```
 
-A partida pausa para eleição/reconexão e retoma. Com o nó 3 parado, o 2 deve liderar; quando o 3 retorna, primeiro sincroniza, depois volta a concorrer. Compare cartas, placar e turno. Não derrube dois nós ao mesmo tempo durante essa demonstração.
+Esse comando executa a checagem de tipos, a suíte automatizada e o build de produção. O relatório fica em `.qa/final-validation.json`.
 
-`restart: "no"` é intencional para permitir observar a falha até executar `start`. Os três volumes separados conservam os registros mesmo se os contêineres forem recriados. Para desligar, use `docker compose stop`; para religar tudo, `docker compose up -d`. Não remova os volumes para reiniciar: isso apaga as partidas e a deduplicação.
+| Comando | Escopo |
+| --- | --- |
+| `npm test` | Suíte completa, incluindo regras, cliente, persistência e cluster |
+| `npm run test:server` | Estado autoritativo e diário persistente |
+| `npm run test:client` | Reconexão do cliente React e reenvio do comando pendente |
+| `npm run test:cluster` | Três processos isolados, partida completa e falhas em pontos do protocolo |
+| `npm run test:regression` | Regras e regressões do protótipo e do cenário |
+| `npm run test:docker` | Demonstração de falha com os contêineres do Neuro em execução |
+| `npm run test:production` | Validação da configuração resultante do Compose de produção |
+| `npm run build` | Checagem de tipos e compilação da interface |
 
-## Configuração e desenvolvimento
+O teste Docker para e recupera um seguidor e o líder, interrompendo as conexões durante a demonstração. Execute-o sem uma partida importante em andamento. Os testes de cluster usam processos, portas e diários próprios em `.test-data/`.
 
-O Compose já possui valores locais. Se precisar alterar a porta/tempos, copie `.env.example` para `.env`. `APP_PORT` altera a porta HTTP; `CLUSTER_TOKEN` é um segredo compartilhado entre os três nós. Mantenha a injeção de falhas desabilitada (`ENABLE_TEST_FAULTS=0`) no uso normal. Os endereços dos nós vêm de `PEERS_JSON` no Compose e usam os nomes DNS `game-1`, `game-2`, `game-3`, sem IPs no programa.
+### Demonstrar recuperação
 
-Só o frontend/gateway publica uma porta, vinculada ao loopback. Os nós e `/internal/rpc` ficam na rede interna. Esta entrega é local; publicação na VPS, domínio e HTTPS serão preparados na Fase 3. O cliente escolhe WS em HTTP e WSS em HTTPS. Isso não implica TLS entre os nós ou autenticação de usuários.
+1. Inicie uma partida em duas sessões e abra `http://127.0.0.1:8080/#painel` em uma terceira aba.
+2. Com os três nós prontos e o nó 3 liderando, execute `docker compose stop game-1`. Aguarde a recuperação com dois participantes e continue a partida.
+3. Execute `docker compose start game-1`. Aguarde os três nós prontos, com versões e hashes iguais.
+4. Execute `docker compose stop game-3`. Observe a eleição do nó 2 e a reconexão dos jogadores. Confira cartas, placar e turno.
+5. Execute `docker compose start game-3` e aguarde sua sincronização antes de uma nova demonstração.
 
-Para editar a interface com atualização automática, requer Node 24 e npm:
+Na VPS, utilize o mesmo conjunto de arquivos Compose e variáveis usado para iniciar os serviços. Recupere o primeiro nó antes de parar o seguinte.
 
-```powershell
-npm.cmd install
-npm.cmd run dev
+## Publicação na VPS
+
+O endereço definido para publicação é `neuro.clayforgestudio.com.br`, usando o Nginx já existente na VPS:
+
+```text
+Navegadores → Nginx (HTTPS/WSS) → 127.0.0.1:8088 → gateway → nós de jogo
 ```
 
-Mantenha o Compose aberto: o Vite encaminha `/nodes/*` e `/runtime-config.json` ao gateway 8080. Para outra porta, defina `NEURO_GATEWAY_URL` antes de iniciar o Vite. Use `npm.cmd` no PowerShell para evitar bloqueio do `npm.ps1`. Instalações limpas reproduzíveis usam `npm.cmd ci`, com o Vite encerrado.
+Os arquivos de preparação estão em:
 
-## Verificações de desenvolvimento
+- [compose.production.yaml](compose.production.yaml): reinício automático, rotação de logs e injeção de falhas desabilitada.
+- [.env.production.example](.env.production.example): exemplo de configuração, com porta `8088` e token a substituir.
+- [nginx.neuro.http.conf](deploy/nginx.neuro.http.conf): site HTTP inicial para emissão do certificado.
+- [nginx.neuro.https.conf](deploy/nginx.neuro.https.conf): proxy HTTPS com suporte a WebSocket.
+- [certbot-neuro-reload.sh](deploy/certbot-neuro-reload.sh): recarga do Nginx após renovação do certificado do Neuro.
 
-```powershell
-npm.cmd run check
-npm.cmd test
-npm.cmd run test:server
-npm.cmd run test:client
-npm.cmd run test:cluster
-npm.cmd run build
-npm.cmd run test:docker
+Após configurar `.env.production` com um segredo próprio, a execução na VPS utiliza:
+
+```bash
+docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml up -d --build
 ```
 
-O teste de cluster inicia três processos isolados, com portas/diários próprios, joga até cinco vitórias e exercita quedas durante a replicação. O teste Docker requer o Compose aberto: cria uma mesa temporária, para/recupera um seguidor e o líder, confere o estado e sai da mesa. **Interrompe as conexões do Neuro durante o teste**; execute sem uma partida importante em andamento. Não remove volumes. Evidência em `.qa/phase2-docker.json`; diários dos testes locais em `.test-data/`, ignorados pelo Git.
+A ativação do DNS, do site Nginx e do certificado deve ser validada na VPS. Os arquivos preparados não indicam que o domínio já foi publicado. O HTTPS termina no Nginx; a comunicação interna entre os nós utiliza HTTP com token compartilhado.
 
-## Organização e decisões
+## Garantias e limites
 
-- `src/main.tsx`, `GameTable.tsx`: navegação e jogo, sem decidir resultado no navegador.
-- `src/network/`: WebSocket, retomada, comando pendente e consulta do painel.
-- `src/TechnicalPanel.tsx`: observabilidade real dos três processos.
-- `src/World3D.tsx`, `scene/`: cenário/câmera preservados da Fase 1.
-- `src/rules.ts`: hierarquia e pardas compartilhadas com o servidor.
-- `shared/protocol.ts`: contratos públicos e validação Zod.
-- `server/state.ts`: estado autoritativo, sorteio, turnos e visões privadas.
-- `server/cluster.ts`: comunicação REST, Bully, épocas, Lamport e replicação.
-- `server/storage.ts`: WAL com fsync, checksums e recuperação.
-- `server/gateway.ts`: arquivos web e proxy restrito HTTP/WebSocket.
-- `src/demo.ts`: protótipo histórico, mantido para testes de regressão; não dirige a mesa online.
+A recuperação foi projetada para **uma falha de nó por vez, com os dois sobreviventes conseguindo se comunicar**. Comandos confirmados são preservados nesse modelo. Um nó que retorna sincroniza o estado antes de poder liderar. Bully escolhe o líder e Lamport registra relações causais; a preservação dos comandos depende da replicação durável e da recuperação por épocas.
 
-[Arquitetura implementada](docs/02-arquitetura.md), [protocolo](docs/03-protocolo.md), [regras](docs/01-escopo-regras.md), [verificação](docs/05-verificacao.md).
+Partições arbitrárias, perda dos volumes, falha de toda a VPS e comportamento malicioso dos nós ficam fora dessa garantia. O gateway é um serviço único. As credenciais de sessão permitem retomada, sem cadastro de usuário.
 
-**Garantia limitada:** preservação de comandos confirmados diante de uma falha de processo por vez, com dois sobreviventes comunicando-se. Bully escolhe o líder; Lamport registra causalidade. A segurança dos comandos vem da gravação em todos os participantes (mínimo dois), barreira de época e recuperação do estado. Não se promete tolerância a partições de rede, falhas bizantinas, perda de volumes/disco ou queda de toda a VPS. O gateway é único.
+O escopo acadêmico limita o conjunto de dados a 20 mesas, 100 identidades e 10 mil comandos deduplicados. O WAL guarda estados completos e ainda não possui compactação ou coleta automática desses registros.
 
-O protótipo acadêmico tem limites de 20 mesas, 100 identidades e 10 mil comandos por conjunto de dados. O WAL guarda estados completos e não tem compactação; não é uma solução dimensionada para operação pública prolongada.
+## Documentação e créditos
 
-## Créditos
+| Documento | Conteúdo |
+| --- | --- |
+| [Escopo e regras](docs/01-escopo-regras.md) | Modalidade, hierarquia, turnos e pardas |
+| [Arquitetura](docs/02-arquitetura.md) | Componentes, gravação, eleição e recuperação |
+| [Protocolo](docs/03-protocolo.md) | Rotas, mensagens, respostas e contratos |
+| [Plano de validação](docs/04-plano-validacao.md) | Planejamento e cenários de teste |
+| [Registro de verificação da fase 2](docs/05-verificacao.md) | Resultados e limites daquela entrega |
+| [Cenário 3D](docs/06-prototipo-3d.md) | Implementação e revisão do cenário |
+| [Validação automatizada](scripts/validate.mjs) | Execução de tipos, testes e build com relatório |
 
-Cartas do ZIP fornecido, sem novas alterações: Basquetteur e colaboradores, incluindo Germarquezm, via Wikimedia Commons; vetorização/distribuição SVG por gjenkins20. [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Mantidos [LEIA-ME](public/cards/LEIA-ME.md) e [fonte original](public/cards/FONTE_README_ORIGINAL.md), acessíveis na interface. Cenário original inspirado na referência visual do usuário.
+As cartas foram fornecidas no pacote do projeto, com arte de Basquetteur e colaboradores, incluindo Germarquezm, via Wikimedia Commons, e vetorização/distribuição SVG por gjenkins20. Licença: [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Os créditos e documentos de origem estão preservados em [public/cards](public/cards/LEIA-ME.md). O cenário é uma criação original inspirada na referência visual enviada para o projeto.
