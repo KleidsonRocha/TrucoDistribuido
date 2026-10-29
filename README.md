@@ -86,7 +86,6 @@ shared/                    Contratos compartilhados e schemas Zod
 public/cards/              Cartas, catálogo, créditos e licença
 tests/                    Testes automatizados e clientes de apoio
 scripts/                   Validação, demonstração de falhas e empacotamento
-deploy/                   Configurações Nginx e hook de renovação do certificado
 docs/                     Regras, arquitetura, protocolo e registros de validação
 compose.yaml               Ambiente de execução e demonstração
 compose.production.yaml    Ajustes para operação na VPS
@@ -97,7 +96,12 @@ Os diários de teste ficam em `.test-data/` e os relatórios de execução em `.
 
 ## Executar com Docker
 
-Requisitos: Docker Engine ou Docker Desktop com contêineres Linux e Docker Compose.
+Requisitos: Docker Engine ou Docker Desktop com contêineres Linux e Docker Compose. Use Git para obter o código:
+
+```bash
+git clone https://github.com/KleidsonRocha/TrucoDistribuido.git
+cd TrucoDistribuido
+```
 
 Na raiz do projeto:
 
@@ -107,6 +111,16 @@ docker compose ps
 ```
 
 Abra **http://127.0.0.1:8080** quando os três serviços `game-*` estiverem `healthy`. Para executar pelo Docker, não é necessário instalar Node.js na máquina hospedeira.
+
+Para conferir o cluster, abra **http://127.0.0.1:8080/#painel** ou consulte os três endpoints:
+
+```bash
+curl -fsS http://127.0.0.1:8080/nodes/1/health
+curl -fsS http://127.0.0.1:8080/nodes/2/health
+curl -fsS http://127.0.0.1:8080/nodes/3/health
+```
+
+Confira `ready: true` em todos e o mesmo `leaderId`. Com os três aptos e a eleição estabilizada, o líder esperado é o nó 3. Um HTTP 200 sozinho não indica prontidão. No PowerShell, use `curl.exe` para esses comandos. Se os nós não ficarem prontos, consulte `docker compose logs --tail 40 game-1 game-2 game-3`.
 
 Para jogar:
 
@@ -182,29 +196,43 @@ O teste Docker para e recupera um seguidor e o líder, interrompendo as conexõe
 
 Na VPS, utilize o mesmo conjunto de arquivos Compose e variáveis usado para iniciar os serviços. Recupere o primeiro nó antes de parar o seguinte.
 
-## Publicação na VPS
+## Execução na VPS
 
-O endereço definido para publicação é `neuro.clayforgestudio.com.br`, usando o Nginx já existente na VPS:
+A aplicação utiliza o Compose de produção e um proxy HTTPS/WSS administrado no servidor. Configurações de Nginx, certificados e hooks de renovação ficam na VPS.
 
-```text
-Navegadores → Nginx (HTTPS/WSS) → 127.0.0.1:8088 → gateway → nós de jogo
-```
-
-Os arquivos de preparação estão em:
+O repositório mantém os arquivos necessários para executar os serviços:
 
 - [compose.production.yaml](compose.production.yaml): reinício automático, rotação de logs e injeção de falhas desabilitada.
-- [.env.production.example](.env.production.example): exemplo de configuração, com porta `8088` e token a substituir.
-- [nginx.neuro.http.conf](deploy/nginx.neuro.http.conf): site HTTP inicial para emissão do certificado.
-- [nginx.neuro.https.conf](deploy/nginx.neuro.https.conf): proxy HTTPS com suporte a WebSocket.
-- [certbot-neuro-reload.sh](deploy/certbot-neuro-reload.sh): recarga do Nginx após renovação do certificado do Neuro.
+- [.env.production.example](.env.production.example): exemplo de configuração, com porta local `8088` e token a substituir.
 
-Após configurar `.env.production` com um segredo próprio, a execução na VPS utiliza:
+Na VPS, copie o exemplo e gere um segredo próprio:
 
 ```bash
-docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml up -d --build
+cp .env.production.example .env.production
+openssl rand -hex 32
 ```
 
-A ativação do DNS, do site Nginx e do certificado deve ser validada na VPS. Os arquivos preparados não indicam que o domínio já foi publicado. O HTTPS termina no Nginx; a comunicação interna entre os nós utiliza HTTP com token compartilhado.
+Edite `.env.production` e substitua o valor de `CLUSTER_TOKEN` pelo segredo gerado. Esse arquivo é ignorado pelo Git. Valide a configuração e inicie:
+
+```bash
+docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml config -q
+docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml up -d --build
+docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml ps
+```
+
+O proxy da VPS deve encaminhar as requisições ao gateway em `127.0.0.1:8088`, preservando o cabeçalho `Host` e o upgrade WebSocket. O HTTPS termina nesse proxy; a comunicação interna entre os nós utiliza HTTP com token compartilhado.
+
+Para parar um seguidor durante a demonstração e depois recuperá-lo:
+
+```bash
+docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml stop game-1
+```
+
+```bash
+docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml start game-1
+```
+
+Aguarde os três nós prontos e sincronizados antes de parar outro. Para testar a queda do líder, consulte seu ID no painel e use o serviço correspondente (`game-3` quando o nó 3 estiver liderando).
 
 ## Garantias e limites
 
@@ -221,9 +249,18 @@ O escopo acadêmico limita o conjunto de dados a 20 mesas, 100 identidades e 10 
 | [Escopo e regras](docs/01-escopo-regras.md) | Modalidade, hierarquia, turnos e pardas |
 | [Arquitetura](docs/02-arquitetura.md) | Componentes, gravação, eleição e recuperação |
 | [Protocolo](docs/03-protocolo.md) | Rotas, mensagens, respostas e contratos |
+| [Documento de protocolo em PDF](docs/entrega/Neuro-protocolo-entre-nos.pdf) | Formato dos envelopes, payloads, respostas e fluxo dos 14 tipos de RPC interna |
+| [Documento de protocolo em Word](docs/entrega/Neuro-protocolo-entre-nos.docx) | Versão editável da especificação entre nós |
+| [Fonte do protocolo entre nós](docs/07-protocolo-entre-nos.md) | Especificação em texto para consulta e manutenção |
+| [Relatório técnico em PDF](docs/entrega/Neuro-relatorio-tecnico.pdf) | Arquitetura, decisões, algoritmos, análise CAP e testes em seis páginas |
+| [Relatório técnico em Word](docs/entrega/Neuro-relatorio-tecnico.docx) | Versão editável do relatório |
+| [Fonte do relatório técnico](docs/08-relatorio-tecnico.md) | Versão em texto com referências e limites da validação |
 | [Plano de validação](docs/04-plano-validacao.md) | Planejamento e cenários de teste |
 | [Registro de verificação da fase 2](docs/05-verificacao.md) | Resultados e limites daquela entrega |
 | [Cenário 3D](docs/06-prototipo-3d.md) | Implementação e revisão do cenário |
 | [Validação automatizada](scripts/validate.mjs) | Execução de tipos, testes e build com relatório |
+| [Roteiro de falhas em PDF](docs/apresentacao/Neuro-roteiro-de-falhas.pdf) | Comandos da VPS e conferência da queda de seguidores e líder |
+| [Comandos do roteiro](docs/apresentacao/Roteiro-de-falhas.md) | Versão em texto para consultar e copiar os comandos |
+| [Apresentação do Neuro](docs/apresentacao/Neuro-apresentacao.pptx) | Slides editáveis com funcionamento do jogo, tecnologias, arquitetura e notas de fala |
 
 As cartas foram fornecidas no pacote do projeto, com arte de Basquetteur e colaboradores, incluindo Germarquezm, via Wikimedia Commons, e vetorização/distribuição SVG por gjenkins20. Licença: [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Os créditos e documentos de origem estão preservados em [public/cards](public/cards/LEIA-ME.md). O cenário é uma criação original inspirada na referência visual enviada para o projeto.

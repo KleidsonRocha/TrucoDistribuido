@@ -14,7 +14,6 @@
     "test:client": "node --experimental-strip-types --test tests/client-online.test.mjs",
     "test:docker": "node --experimental-strip-types scripts/check-docker.mjs",
     "test:regression": "node --experimental-strip-types --test tests/demo.test.mjs tests/world3d.test.mjs tests/graphics-fallback.test.mjs tests/door-entry.test.mjs",
-    "test:tls": "node --experimental-strip-types scripts/check-tls.mjs",
     "validate": "node scripts/validate.mjs",
     "release": "node scripts/package-release.mjs",
     "test:production": "node scripts/check-production.mjs"

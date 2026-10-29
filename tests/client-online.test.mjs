@@ -8,7 +8,7 @@ import {applyCommand,emptyState,projectState} from '../server/state.ts';
 import {secretHash} from '../server/storage.ts';
 
 test('React online client reconnects and resends pending UUID unchanged; stale ACK requires explicit retry',async()=>{
-  const window=new Window({url:'https://neuro.clayforgestudio.com.br'});
+  const window=new Window({url:'https://neuro.example.test'});
   const sockets=[],sent=[];let acknowledge=false;let response;
   const cluster={nodeId:3,leaderId:3,epoch:{counter:1,leaderId:3},lamport:20,ready:true};
   const identity={clientId:randomUUID(),resumeSecret:randomBytes(32).toString('hex')};
@@ -32,7 +32,7 @@ test('React online client reconnects and resends pending UUID unchanged; stale A
     const created=applyCommand(emptyState(),{key:secretHash(identity.resumeSecret),clientId:identity.clientId,nickname:'Ana'},sent[0],1,1000);
     response=m=>({type:'ACK',protocolVersion:1,commandId:m.commandId,result:created.result,state:projectState(created.state,secretHash(identity.resumeSecret),1),cluster});
     acknowledge=true;await act(async()=>sockets[0].close(1013));await wait(()=>sent.length===2&&!client.busy);
-    assert.deepEqual(sent[1],sent[0]);assert.equal((await pending).ok,true);assert.equal(client.state.version,1);assert.equal(window.sessionStorage.getItem('neuro.pending.v2'),null);assert.equal(sockets[1].url,'wss://neuro.clayforgestudio.com.br/nodes/2/ws');
+    assert.deepEqual(sent[1],sent[0]);assert.equal((await pending).ok,true);assert.equal(client.state.version,1);assert.equal(window.sessionStorage.getItem('neuro.pending.v2'),null);assert.equal(sockets[1].url,'wss://neuro.example.test/nodes/2/ws');
     response=m=>({type:'ACK',protocolVersion:1,commandId:m.commandId,result:{ok:false,version:2,code:'STALE_VERSION',message:'Confira a mesa e tente novamente.'},state:{...client.state,version:2},cluster});
     let rejected;await act(async()=>{rejected=client.command('READY').catch(e=>e);});await wait(()=>!client.busy);assert.equal((await rejected).code,'STALE_VERSION');assert.equal(sent.length,3);assert.equal(client.state.version,2);
   }finally{if(root)await act(async()=>root.unmount());await server.close();await window.happyDOM.close();for(const [key,value] of originals){if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];}}
