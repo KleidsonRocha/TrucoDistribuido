@@ -14,3 +14,9 @@ test('configuration rejects missing/short cluster tokens and overly aggressive f
   assert.throws(()=>config({...environment,HEARTBEAT_INTERVAL_MS:'1000',FAILURE_TIMEOUT_MS:'2000'}));
   assert.throws(()=>config({...environment,NODE_ID:'4'}));
 });
+test('demonstration journal defaults and configurable retention reject unsafe limits',()=>{
+  assert.equal(config(environment).journalMaxBytes,65536);assert.equal(config(environment).journalKeepFiles,3);
+  assert.equal(config({...environment,JOURNAL_MAX_BYTES:'4096',JOURNAL_KEEP_FILES:'1'}).journalMaxBytes,4096);
+  for(const value of ['0','4095','invalid'])assert.throws(()=>config({...environment,JOURNAL_MAX_BYTES:value}));
+  for(const value of ['0','11','1.5'])assert.throws(()=>config({...environment,JOURNAL_KEEP_FILES:value}));
+});

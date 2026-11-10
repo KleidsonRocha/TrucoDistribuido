@@ -23,19 +23,23 @@ export class Cluster {
   private peers=new Map<number,Peer>();private since=performance.now();private noLeaderSince=performance.now();
   private coordinatorDeadline=0;private electionRunning=false;private tickRunning=false;private joining=false;private stopping=false;
   private serial:Promise<unknown>=Promise.resolve();private timer:ReturnType<typeof setInterval>|null=null;
+  private diagnostics:ClusterEvent[]=[];
   private visible:Checkpoint;private fault:string|null=null;
-  constructor(config:Config){this.config=config;this.store=new DurableStore(config.dataDir);this.visible=structuredClone(this.store.checkpoint);for(const peer of config.peers)if(peer.id!==config.id)this.peers.set(peer.id,{lastContact:0,wire:null});}
+  constructor(config:Config){this.config=config;this.store=new DurableStore(config.dataDir,{maxBytes:config.journalMaxBytes,keepFiles:config.journalKeepFiles});this.events=this.store.history;this.visible=structuredClone(this.store.checkpoint);for(const peer of config.peers)if(peer.id!==config.id)this.peers.set(peer.id,{lastContact:0,wire:null});}
   get ready(){return (this.role==='LEADER'||this.role==='FOLLOWER')&&this.leaderId!==null&&this.store.checkpoint.members.includes(this.config.id)&&this.store.checkpoint.members.length>=2&&compareEpoch(this.store.promised,this.store.checkpoint.installedEpoch)===0;}
   get info():ClusterInfo{return {nodeId:this.config.id,leaderId:this.leaderId,epoch:this.store.checkpoint.installedEpoch,lamport:this.store.lamport,ready:this.ready};}
   get publicVersion(){return this.visible.last?.index??0;}
   view(key:string){return projectState(this.visible.last?.state??{identities:{},rooms:{},dedup:{}},key,this.publicVersion);}
   private enqueue<T>(work:()=>Promise<T>|T):Promise<T>{const task=this.serial.then(work);this.serial=task.catch(()=>{});return task;}
   event(type:string,detail:string,commandId:string|null=null,stamp?:number){
+    // Routine RPC traffic must not evict elections and game events from the demonstration.
+    if(/^(SEND_|RECEIVE_)/.test(type)&&type!=='RECEIVE_HEARTBEAT')return;
     const event:ClusterEvent={id:randomUUID(),at:new Date().toISOString(),nodeId:this.config.id,lamport:stamp??this.store.tick(),type,detail,epoch:{...this.store.promised},index:this.store.version,commandId};
-    this.events.push(event);if(this.events.length>500)this.events.shift();
+    if(type==='RECEIVE_HEARTBEAT'){this.diagnostics.push(event);if(this.diagnostics.length>4)this.diagnostics.shift();return;}
+    this.store.recordEvent(event);
   }
   status():NodeStatus {
-    const now=performance.now();return {nodeId:this.config.id,role:this.role,ready:this.ready,eligible:this.eligible,leaderId:this.leaderId,epoch:this.store.checkpoint.installedEpoch,lamport:this.store.lamport,version:this.store.version,visibleVersion:this.publicVersion,hash:this.store.hash,members:this.store.checkpoint.members,uptimeMs:Math.round(now-this.since),peers:[...this.peers].map(([id,peer])=>({nodeId:id,reachable:peer.lastContact>0&&now-peer.lastContact<this.config.failureMs,lastContactAgeMs:peer.lastContact>0?Math.round(now-peer.lastContact):null,role:peer.wire?.role??null,version:peer.wire?.version??null,lamport:peer.wire?.lamport??null})),events:[...this.events]};
+    const now=performance.now();return {nodeId:this.config.id,role:this.role,ready:this.ready,eligible:this.eligible,leaderId:this.leaderId,epoch:this.store.checkpoint.installedEpoch,lamport:this.store.lamport,version:this.store.version,visibleVersion:this.publicVersion,hash:this.store.hash,members:this.store.checkpoint.members,uptimeMs:Math.round(now-this.since),peers:[...this.peers].map(([id,peer])=>({nodeId:id,reachable:peer.lastContact>0&&now-peer.lastContact<this.config.failureMs,lastContactAgeMs:peer.lastContact>0?Math.round(now-peer.lastContact):null,role:peer.wire?.role??null,version:peer.wire?.version??null,lamport:peer.wire?.lamport??null})),events:[...this.events,...this.diagnostics].sort((a,b)=>a.lamport-b.lamport)};
   }
   private wire():Wire{return {...this.info,nodeId:this.config.id,role:this.role,eligible:this.eligible,promised:this.store.promised,version:this.store.version,visibleVersion:this.publicVersion,hash:this.store.hash,members:this.store.checkpoint.members,presence:[...this.presence]};}
   private snapshot():Snapshot{return {wire:this.wire(),checkpoint:structuredClone(this.store.checkpoint)};}
@@ -47,7 +51,7 @@ export class Cluster {
     if(reply.from!==id||reply.to!==this.config.id||reply.requestId!==request.requestId)throw new Error('Resposta RPC não corresponde à requisição.');
     const received=this.store.tick(reply.lamport);this.event(`RECEIVE_${reply.type}`,`Resposta do nó ${id}`,null,received);
     const target=this.peers.get(id);if(target)target.lastContact=performance.now();
-    if(reply.type==='FAIL'){const error=z.strictObject({code:z.string(),message:z.string()}).parse(reply.payload);throw new ClusterError(error.code,error.message);}
+    if(reply.type==='FAIL'){const error=z.strictObject({code:z.string(),message:z.string()}).parse(reply.payload);this.event('RPC_FAILED',`${type} para nó ${id}: ${error.code}: ${error.message}`);throw new ClusterError(error.code,error.message);}
     return reply.payload;
   }
   async receive(request:Rpc):Promise<Rpc>{
@@ -55,7 +59,7 @@ export class Cluster {
     const received=this.store.tick(request.lamport);this.event(`RECEIVE_${request.type}`,`Mensagem do nó ${request.from}`,null,received);
     const peer=this.peers.get(request.from);if(peer)peer.lastContact=performance.now();
     let type='REPLY';let payload:unknown;
-    try{payload=await this.handle(request);}catch(error){type='FAIL';payload={code:error instanceof ClusterError?error.code:'PROTOCOL_ERROR',message:error instanceof Error?error.message:'Erro de protocolo.'};}
+    try{payload=await this.handle(request);}catch(error){type='FAIL';const message=error instanceof Error?error.message:'Erro de protocolo.';payload={code:error instanceof ClusterError?error.code:'PROTOCOL_ERROR',message};this.event('RPC_REJECTED',`${request.type} do nó ${request.from}: ${message}`);}
     const lamport=this.store.tick();this.event(`SEND_${type}`,`Resposta para nó ${request.from}`,null,lamport);
     return {protocolVersion:1,requestId:request.requestId,from:this.config.id,to:request.from,lamport,epoch:this.store.promised,type,payload};
   }
@@ -259,7 +263,7 @@ export class Cluster {
     this.event('LEADER_READY',`Bully elegeu ${this.config.id}; membros ${members.join(', ')}; versão ${this.store.version}`);
     console.log(JSON.stringify({event:'leader-ready',node:this.config.id,epoch,members,version:this.store.version}));this.onChange();
   }
-  stop(){this.stopping=true;this.role='STOPPING';if(this.timer)clearInterval(this.timer);}
+  stop(){if(!this.stopping)this.event('STOPPING','Nó encerrado de forma controlada');this.stopping=true;this.role='STOPPING';if(this.timer)clearInterval(this.timer);}
   async close(){this.stop();await this.serial;this.store.close();}
 }
 function canonicalMembers(ids:number[]){return JSON.stringify([...ids].sort());}

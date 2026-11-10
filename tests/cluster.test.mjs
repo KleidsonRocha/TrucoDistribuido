@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
-import {mkdir,mkdtemp,writeFile} from 'node:fs/promises';
+import {mkdir,mkdtemp,writeFile,readdir,stat,readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {once} from 'node:events';
@@ -16,7 +16,7 @@ test('three real processes: private game, full match, failover, sync and uncerta
   const token='neuro-integration-test-private-token';
   const nodes=await Promise.all([1,2,3].map(async id=>({id,url:`http://127.0.0.1:${await freePort()}`})));
   const processes=new Map(),logs=[];const clients=[];const timings=[];
-  function start(id){const node=nodes[id-1];const child=spawn(process.execPath,['--experimental-strip-types','server/index.ts'],{cwd:resolve('.'),env:{...process.env,NODE_ID:String(id),PORT:new URL(node.url).port,PEERS_JSON:JSON.stringify(nodes),CLUSTER_TOKEN:token,DATA_DIR:resolve(directory,String(id)),HEARTBEAT_INTERVAL_MS:'300',FAILURE_TIMEOUT_MS:'1200',RPC_TIMEOUT_MS:'700',COORDINATOR_TIMEOUT_MS:'2500',PLAYER_GRACE_MS:'60000',ENABLE_TEST_FAULTS:'1'},stdio:['ignore','pipe','pipe']});processes.set(id,child);child.stdout.on('data',data=>logs.push(`${id}: ${data}`));child.stderr.on('data',data=>logs.push(`${id}: ${data}`));}
+  function start(id){const node=nodes[id-1];const child=spawn(process.execPath,['--experimental-strip-types','server/index.ts'],{cwd:resolve('.'),env:{...process.env,NODE_ID:String(id),PORT:new URL(node.url).port,PEERS_JSON:JSON.stringify(nodes),CLUSTER_TOKEN:token,DATA_DIR:resolve(directory,String(id)),HEARTBEAT_INTERVAL_MS:'300',FAILURE_TIMEOUT_MS:'1200',RPC_TIMEOUT_MS:'700',COORDINATOR_TIMEOUT_MS:'2500',PLAYER_GRACE_MS:'60000',ENABLE_TEST_FAULTS:'1',JOURNAL_MAX_BYTES:'4096',JOURNAL_KEEP_FILES:'3'},stdio:['ignore','pipe','pipe']});processes.set(id,child);child.stdout.on('data',data=>logs.push(`${id}: ${data}`));child.stderr.on('data',data=>logs.push(`${id}: ${data}`));}
   async function stop(id){const p=processes.get(id);if(p&&p.exitCode===null&&p.signalCode===null){p.kill('SIGKILL');await new Promise(r=>p.once('exit',r));}}
   async function statuses(){return Promise.all(nodes.map(n=>fetch(n.url+'/status',{signal:AbortSignal.timeout(600)}).then(r=>r.json()).catch(()=>null)));}
   async function stable(count=3){try{return await until(async()=>{const all=(await statuses()).filter(Boolean);const leader=all.find(s=>s.role==='LEADER'&&s.ready);return all.length===count&&leader&&leader.members.length===count&&all.every(s=>s.ready&&s.leaderId===leader.nodeId&&s.epoch.counter===leader.epoch.counter&&s.hash===leader.hash)?leader:false;},`stable ${count}`);}catch(error){await writeFile(resolve(directory,'unstable.json'),JSON.stringify({statuses:await statuses(),logs},null,2));throw error;}}
@@ -99,6 +99,12 @@ test('three real processes: private game, full match, failover, sync and uncerta
       start(1);start(2);await stable();assert.equal((await c.send(pending)).result.ok,true);assert.equal(c.state.rooms.filter(r=>r.nicknames.includes(c.name)).length,1);await c.command('LEAVE_ROOM');c.close();clients.splice(clients.indexOf(c),1);
     });
     const all=await statuses();assert.ok(all.every(s=>s.lamport>0));
+    for(const id of [1,2,3]){
+      const files=(await readdir(resolve(directory,String(id)))).filter(name=>/^journal(?:\.\d+)?\.ndjson$/.test(name));
+      assert.ok(files.length>=2&&files.length<=3,'integration must exercise rotation and retain at most three journals');
+      for(const file of files){assert.ok((await stat(resolve(directory,String(id),file))).size<=4096);assert.doesNotMatch(await readFile(resolve(directory,String(id),file),'utf8'),/"kind":"CLOCK"/);}
+      assert.ok(all[id-1].events.filter(e=>e.type!=='RECEIVE_HEARTBEAT').length<=100);
+    }
     await writeFile(resolve(directory,'result.json'),JSON.stringify({passed:true,timings,nodes:all.map(({nodeId,role,version,hash,lamport,epoch})=>({nodeId,role,version,hash,lamport,epoch})),logs},null,2));
   }catch(error){await writeFile(resolve(directory,'failure.json'),JSON.stringify({error:error.stack,statuses:await statuses(),logs},null,2));throw error;}
   finally{clients.forEach(c=>c.close());await Promise.all(nodes.map(n=>stop(n.id)));}

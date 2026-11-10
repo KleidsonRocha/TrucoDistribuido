@@ -17,6 +17,8 @@ x-game: &game
     COORDINATOR_TIMEOUT_MS: ${COORDINATOR_TIMEOUT_MS:-6000}
     PLAYER_GRACE_MS: ${PLAYER_GRACE_MS:-120000}
     ENABLE_TEST_FAULTS: ${ENABLE_TEST_FAULTS:-0}
+    JOURNAL_MAX_BYTES: ${JOURNAL_MAX_BYTES:-65536}
+    JOURNAL_KEEP_FILES: ${JOURNAL_KEEP_FILES:-3}
   networks: [neuro]
   healthcheck:
     test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>r.json()).then(s=>process.exit(s.ready?0:1)).catch(()=>process.exit(1))"]

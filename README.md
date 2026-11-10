@@ -27,7 +27,7 @@ Os jogadores ao fundo do salão são elementos decorativos. O adversário sentad
 | Contratos | Zod | Validação das mensagens e das estruturas de dados |
 | Comunicação com o navegador | WebSocket, biblioteca `ws` | Comandos e atualizações da partida em tempo real |
 | Comunicação entre nós | HTTP com JSON | Heartbeat, eleição, replicação e sincronização |
-| Persistência | WAL, SHA-256 e `fsync` | Diários duráveis por nó e verificação da cadeia de operações |
+| Persistência | Checkpoint durável, journals rotativos, SHA-256 e `fsync` | Recuperação do estado por nó e histórico recente para demonstração |
 | Infraestrutura | Docker e Docker Compose | Execução dos serviços, rede, descoberta por DNS e volumes |
 | Publicação na VPS | Nginx e Certbot | Proxy HTTPS/WSS e certificado do subdomínio |
 | Testes | Node Test Runner e Happy DOM | Regras, protocolo, cliente, persistência e cenários de falha |
@@ -162,6 +162,8 @@ O ambiente local utiliza os valores do Compose. Para personalizá-los, copie `.e
 | `RPC_TIMEOUT_MS` | Timeout de uma chamada entre nós |
 | `COORDINATOR_TIMEOUT_MS` | Prazo para aguardar a coordenação de uma eleição |
 | `PLAYER_GRACE_MS` | Prazo de retomada após detectar a desconexão de um jogador |
+| `JOURNAL_MAX_BYTES` | Limite de cada arquivo de histórico; padrão `65536` bytes (64 KiB), mínimo 4 KiB |
+| `JOURNAL_KEEP_FILES` | Quantidade total de journals por nó, incluindo o atual; padrão `3` |
 | `ENABLE_TEST_FAULTS` | Habilita pontos de falha controlada; manter `0` no uso normal |
 | `NEURO_GATEWAY_URL` | Destino do proxy do Vite quando o gateway usa outra porta |
 
@@ -240,7 +242,28 @@ A recuperação foi projetada para **uma falha de nó por vez, com os dois sobre
 
 Partições arbitrárias, perda dos volumes, falha de toda a VPS e comportamento malicioso dos nós ficam fora dessa garantia. O gateway é um serviço único. As credenciais de sessão permitem retomada, sem cadastro de usuário.
 
-O escopo acadêmico limita o conjunto de dados a 20 mesas, 100 identidades e 10 mil comandos deduplicados. O WAL guarda estados completos e ainda não possui compactação ou coleta automática desses registros.
+O escopo acadêmico limita o conjunto de dados a 20 mesas, 100 identidades e 10 mil comandos deduplicados. O checkpoint conserva o estado atual, a cadeia de decisões e os resultados usados para deduplicação; essas estruturas de recuperação não são apagadas junto com o histórico.
+
+## Diários e retenção para a apresentação
+
+Cada volume de nó contém:
+
+- `recovery.json`: checkpoint com a partida, decisão, preparação pendente, promessa de época e reserva do relógio lógico. Atualizações críticas usam arquivo temporário, `fsync` e substituição atômica antes da confirmação. Esse arquivo é necessário para recuperar o jogo e não entra no limite do histórico.
+- `journal.ndjson`: resumos das operações e eventos relevantes de eleição, partida e falha. Não repete o estado completo nem grava um registro `CLOCK` a cada heartbeat.
+- `journal.1.ndjson` e `journal.2.ndjson`: os dois journals anteriores, com os valores padrão. O mais antigo é removido na próxima rotação.
+
+O padrão mantém até **três journals de 64 KiB por nó**, ou 192 KiB de histórico. O checkpoint pode ser maior, conforme o estado da partida. Para enxergar a rotação ainda mais cedo, configure no arquivo de ambiente usado pelo Compose:
+
+```dotenv
+JOURNAL_MAX_BYTES=16384
+JOURNAL_KEEP_FILES=3
+```
+
+O painel recupera até 100 eventos recentes por nó, dentro da janela de arquivos retidos. Eleições, sincronizações, jogadas confirmadas, falhas e encerramentos controlados ficam registrados. Tráfego rotineiro de envio e resposta não preenche esse histórico; apenas quatro amostras de recebimento de heartbeat ficam em memória para observar Lamport.
+
+O relógio avança em memória. Para evitar regressão após uma queda, o checkpoint reserva blocos de 4.096 valores antes de usá-los. No reinício, o relógio salta para o limite reservado; isso não corresponde a tempo físico nem altera cartas ou placar. Não há um `fsync` para cada incremento.
+
+Na primeira inicialização após esta atualização, o nó lê o journal antigo em fluxo, recupera seu estado e grava o checkpoint durável antes de reescrever o histórico de forma limitada. Registros antigos de `CLOCK` são descartados. Preparações, decisões e promessas necessárias à recuperação são preservadas. A atualização usa os volumes existentes; não é necessário apagá-los.
 
 ## Documentação e créditos
 
