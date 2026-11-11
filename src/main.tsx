@@ -17,7 +17,7 @@ import './turn.css';
 const World3D=lazy(()=>import('./World3D'));
 
 type Screen = 'entrada' | 'salao' | 'mesa' | 'painel';
-type Modal = 'rules' | 'credits' | 'code' | null;
+type Modal = 'rules' | 'credits' | 'code' | 'team' | null;
 const screens:Screen[] = ['entrada','salao','mesa','painel'];
 function currentScreen(): Screen {
   const value=location.hash.slice(1) as Screen;
@@ -31,6 +31,9 @@ function App() {
   const [nickname,setNickname]=useState(savedNickname);
   const [modal,setModal]=useState<Modal>(null);
   const [code,setCode]=useState('');
+  const [playerCount,setPlayerCount]=useState<2|4>(2);
+  const [teamChoice,setTeamChoice]=useState<0|1>(0);
+  const [pendingTable,setPendingTable]=useState<{visual:string;joinCode:string|null}|null>(null);
   const [tableVisual,setTableVisual]=useState('NEURO1');
   const [connectName,setConnectName]=useState(savedNickname);
   const online=useOnlineGame(connectName);
@@ -104,14 +107,22 @@ function App() {
     locked.current=true;setError('');setWalkingIn(true);
     approachTimer.current=setTimeout(()=>navigate('salao'),stableCamera||reducedMotion?10:JOURNEY_MS.entry);
   }
-  async function sit(nextRoom='NEURO1',joinCode?:string) {
+  async function sit(nextRoom='NEURO1',joinCode?:string,joinTeam:0|1=teamChoice) {
     if(locked.current)return;
     locked.current=true;setTableVisual(nextRoom);setError('');online.clearError();
     try {
-      await online.command(joinCode?'JOIN_ROOM':'CREATE_ROOM',joinCode?{kind:'JOIN',code:joinCode}:{kind:'EMPTY'});
-      setModal(null);setApproaching(true);
+      await online.command(joinCode?'JOIN_ROOM':'CREATE_ROOM',joinCode?{kind:'JOIN',code:joinCode,team:joinTeam}:{kind:'CREATE',playerCount,team:joinTeam});
+      setModal(null);setPendingTable(null);setApproaching(true);
       approachTimer.current=setTimeout(()=>navigate('mesa'),stableCamera||reducedMotion?10:JOURNEY_MS.table);
     }catch(reason){locked.current=false;const message=reason instanceof Error?reason.message:'Não foi possível entrar na mesa.';setError(message);setNotice(message);}
+  }
+  function selectTable(visual='NEURO1',joinCode?:string){
+    if(locked.current)return;
+    const room=joinCode?online.state.rooms.find(item=>item.code===joinCode):null;
+    if((joinCode?room?.playerCount===4:playerCount===4)){
+      setPendingTable({visual,joinCode:joinCode??null});setTeamChoice(room?.teamCounts[0]===2?1:0);setError('');setModal('team');return;
+    }
+    void sit(visual,joinCode,0);
   }
   async function leave(next:Screen='salao') {
     if(room){try{await online.command('LEAVE_ROOM');}catch(reason){setNotice(reason instanceof Error?reason.message:'Aguarde a conexão para sair.');return;}}
@@ -127,7 +138,7 @@ function App() {
   function join(e:React.FormEvent) {
     e.preventDefault();
     if(!/^[A-Z2-9]{6}$/.test(code.trim().toUpperCase())){setError('Informe os seis caracteres do código da mesa.');return;}
-    void sit('NEURO1',code.trim().toUpperCase());
+    selectTable('NEURO1',code.trim().toUpperCase());
   }
   async function copyCode() {
     if(!room)return;
@@ -136,6 +147,11 @@ function App() {
   }
   const openModal=(next:Modal)=>{setError('');setModal(next);};
   const player=nickname.trim()||'Visitante';
+  const rulesPlayerCount=room?.playerCount??playerCount;
+  const codeRoom=online.state.rooms.find(item=>item.code===code.trim().toUpperCase());
+  const pendingTeamRoom=pendingTable?.joinCode?online.state.rooms.find(item=>item.code===pendingTable.joinCode):null;
+  const pendingTeamFull=!!pendingTable?.joinCode&&pendingTeamRoom?.teamCounts[teamChoice]===2;
+  const teamCount=(team:0|1)=>pendingTable?.joinCode?pendingTeamRoom?.teamCounts[team]??0:team===teamChoice?1:0;
   return <div className={`app view-${screen} ${threeD?'three-mode':''} ${approaching?'approaching':''} ${stableCamera||reducedMotion?'camera-stable':''}`}>
     <a href="#conteudo" className="skip-link" onClick={e=>{e.preventDefault();mainRef.current?.focus();}}>Pular para o conteúdo</a>
     <header className="site-header">
@@ -148,14 +164,14 @@ function App() {
       <span className="phase-tag"><i/> Truco online · {threeD?'cenário 3D':'versão ilustrada'}</span>
     </header>
 
-    {threeD&&<SceneBoundary onUse2D={()=>setThreeD(false)}><Suspense fallback={<div className="world-loading" role="status">Acendendo as luzes do Neuro…</div>}><World3D view={screen} journey={walkingIn?'entry':approaching?'table':walkingBathroom?'bathroom':null} room={tableVisual} stable={stableCamera||reducedMotion} lowQuality={lowQuality} opponentPresent={!!room?.opponent} onRules={()=>openModal('rules')} onBathroom={visitBathroom} onSit={sit} onCode={()=>{setCode('');openModal('code');}} onUse2D={()=>setThreeD(false)} onDoorClick={()=>nicknameRef.current?.focus()}/></Suspense></SceneBoundary>}
+    {threeD&&<SceneBoundary onUse2D={()=>setThreeD(false)}><Suspense fallback={<div className="world-loading" role="status">Acendendo as luzes do Neuro…</div>}><World3D view={screen} journey={walkingIn?'entry':approaching?'table':walkingBathroom?'bathroom':null} room={tableVisual} stable={stableCamera||reducedMotion} lowQuality={lowQuality} opponentPresent={!!room?.others.length} onRules={()=>openModal('rules')} onBathroom={visitBathroom} onSit={selectTable} onCode={()=>{setCode('');openModal('code');}} onUse2D={()=>setThreeD(false)} onDoorClick={()=>nicknameRef.current?.focus()}/></Suspense></SceneBoundary>}
 
     {connectName&&<div className={`connection-strip connection-${online.connection}`} role="status"><span>{online.connection==='online'?(online.busy?'Confirmando sua ação…':'Conectado · pronto para jogar'):online.connection==='recovering'?'Reconectando · sua partida será retomada…':'Conectando aos servidores…'}</span>{online.error&&<span>{online.error}</span>}{online.connection==='offline'&&<button onClick={online.reconnect}>Tentar novamente</button>}</div>}
     <main id="conteudo" ref={mainRef} tabIndex={-1}>
       {screen==='entrada' && (threeD?<section className="three-entry-hud"><h2 className="sr-only">Diante da porta do Neuro</h2>{!walkingIn&&<DoorEntryForm nickname={nickname} error={error} walking={walkingIn} inputRef={nicknameRef} onNickname={value=>{setNickname(value);setError('');}} onEnter={enter}/>}<div className="scene-context"><span>RUA DE TODAS AS NOITES, 40</span><p>Uma noite qualquer.<br/><em>Uma boa mão pela frente.</em></p></div><button className="three-entry-rules" disabled={walkingIn} onClick={()=>openModal('rules')}>Quadro da casa · Como jogar ↗</button></section>:<BarDoor nickname={nickname} error={error} walking={walkingIn} onNickname={value=>{setNickname(value);setError('');}} onEnter={enter} onRules={()=>openModal('rules')}/>)}
 
-      {screen==='salao'&&online.state.rooms.length>0&&<aside className="live-rooms" aria-label="Mesas online"><h2>Mesas no salão</h2>{online.state.rooms.map(item=><button key={item.id} disabled={item.players!==1||item.phase!=='WAITING'||online.busy||online.connection!=='online'} onClick={()=>void sit('NEURO1',item.code)}><strong>{item.code}</strong><span>{item.nicknames.join(' × ')} · {item.players}/2</span></button>)}</aside>}
-      {screen==='salao' && (threeD?<section className="three-hall-hud"><div className="hall-context"><span>VOCÊ ENTROU NO NEURO</span><h1>Chega mais, <em>{player}.</em></h1><p>Escolha uma mesa ou explore o bar.</p></div><nav className="three-shortcuts" aria-label="Navegar pelo salão"><button disabled={approaching||walkingBathroom} onClick={()=>sit()}>Mesa 01 ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>sit('MESA02')}>Mesa 02 ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>openModal('rules')}>Quadro de regras ↗</button><button disabled={approaching||walkingBathroom} onClick={visitBathroom}>Banheiro · Painel ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>{setCode('');openModal('code');}}>Tenho um código ↗</button></nav><p className="three-demo-note">Jogadores ao fundo ilustrativos · convide um amigo para jogar</p></section>:<BarHall nickname={player} approaching={approaching} onSit={sit} onCode={()=>{setCode('');openModal('code');}} onRules={()=>openModal('rules')} onBathroom={()=>navigate('painel')}/>)}
+      {screen==='salao'&&online.state.rooms.length>0&&<aside className="live-rooms" aria-label="Mesas online"><h2>Mesas no salão</h2>{online.state.rooms.map(item=><div className="live-room" key={item.id}><strong>{item.code} · {item.playerCount===4?'2x2':'1 × 1'}</strong><span>{item.nicknames.join(' × ')} · {item.players}/{item.playerCount}{item.playerCount===4?` · D1 ${item.teamCounts[0]}/2 · D2 ${item.teamCounts[1]}/2`:''}</span><button disabled={item.players>=item.playerCount||item.phase!=='WAITING'||online.busy||online.connection!=='online'} onClick={()=>selectTable('NEURO1',item.code)}>Escolher mesa →</button></div>)}</aside>}
+      {screen==='salao' && (threeD?<section className="three-hall-hud"><div className="hall-context"><span>VOCÊ ENTROU NO NEURO</span><h1>Chega mais, <em>{player}.</em></h1><p>Escolha uma mesa ou explore o bar.</p></div><ModePicker value={playerCount} onChange={setPlayerCount}/><nav className="three-shortcuts" aria-label="Navegar pelo salão"><button disabled={approaching||walkingBathroom} onClick={()=>selectTable()}>Mesa 01 ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>selectTable('MESA02')}>Mesa 02 ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>openModal('rules')}>Quadro de regras ↗</button><button disabled={approaching||walkingBathroom} onClick={visitBathroom}>Banheiro · Painel ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>{setCode('');openModal('code');}}>Tenho um código ↗</button></nav><p className="three-demo-note">Jogadores ao fundo ilustrativos · convide amigos para jogar</p></section>:<BarHall nickname={player} approaching={approaching} playerCount={playerCount} onPlayerCount={setPlayerCount} onSit={selectTable} onCode={()=>{setCode('');openModal('code');}} onRules={()=>openModal('rules')} onBathroom={()=>navigate('painel')}/>)}
 
       {screen==='mesa' && room && <GameTable room={room} threeD={threeD} connected={online.connection==='online'} busy={online.busy} onCommand={sendCommand} onExit={()=>void leave()} onRules={()=>openModal('rules')} onCopy={copyCode}/>}
       {screen==='mesa'&&!room&&<div className="waiting-card"><h2>Recuperando sua mesa…</h2><button className="secondary" onClick={()=>navigate('salao')}>Voltar ao salão</button></div>}
@@ -165,11 +181,16 @@ function App() {
     {notice && <div className="toast" role="status">{notice}</div>}
     <dialog ref={dialogRef} className={`modal ${modal==='rules'?'rules-modal':''}`} onCancel={()=>setModal(null)} onClick={e=>{if(e.target===e.currentTarget)setModal(null);}} aria-labelledby="dialog-title">
       <button className="modal-close" onClick={()=>setModal(null)} aria-label="Fechar janela">×</button>
-      {modal==='rules' && <><div className="eyebrow">COMBINADOS DA CASA</div><h2 id="dialog-title">Poucas regras.<br/><em>Boas partidas.</em></h2><p>Truco argentino simplificado, por vitórias. Dois jogadores, três cartas por mão. A primeira pessoa a ganhar cinco mãos vence a partida.</p><div className="rule-grid"><div><b>01 / A mão</b><p>Até três vazas. A maior carta vence a vaza. Quem vence abre a seguinte; se empatar, mantém-se quem abriu.</p></div><div><b>02 / As pardas</b><p>Quem vence a primeira e empata a segunda ganha a mão. Primeira empatada: a próxima vaza vencida decide. Se cada um vencer uma, a terceira decide; terceira empatada favorece quem venceu a primeira. Três empates favorecem quem abriu a mão.</p></div></div><h3>Da mais forte à mais fraca</h3><ol className="rank-list"><li>1 de espadas</li><li>1 de paus</li><li>7 de espadas</li><li>7 de ouros</li><li>Todos os 3</li><li>Todos os 2</li><li>1 de copas e ouros</li><li>Todos os 12</li><li>Todos os 11</li><li>Todos os 10</li><li>7 de copas e paus</li><li>Todos os 6</li><li>Todos os 5</li><li>Todos os 4</li></ol><p className="fine-print">Cartas do mesmo grupo empatam. Criador abre a primeira mão, depois alterna. Sem envido, flor, aumentos de aposta ou dinheiro. O servidor distribui as cartas, valida o turno e calcula o resultado. Os dois jogadores confirmam o início, a próxima vaza e a próxima mão.</p><button className="primary" onClick={()=>setModal(null)}>Combinado <span>→</span></button></>}
+      {modal==='rules' && <><div className="eyebrow">COMBINADOS DA CASA</div><h2 id="dialog-title">Poucas regras.<br/><em>Boas partidas.</em></h2><p>Truco argentino simplificado, por vitórias. {rulesPlayerCount===4?'Quatro jogadores formam duas duplas em lugares alternados.':'Duas pessoas jogam uma contra a outra.'} Cada jogador recebe três cartas. A primeira dupla ou pessoa a ganhar cinco mãos vence.</p>{rulesPlayerCount===4&&<p>Na modalidade em duplas, todos jogam uma carta por vaza. A carta mais forte define a dupla vencedora; quem ganhar duas vazas leva a mão. As cartas continuam privadas, inclusive as do parceiro.</p>}<div className="rule-grid"><div><b>01 / A mão</b><p>Até três vazas. A maior carta vence a vaza. Quem vence abre a seguinte; se empatar, mantém-se quem abriu.</p></div><div><b>02 / As pardas</b><p>Quem vence a primeira e empata a segunda ganha a mão. Primeira empatada: a próxima vaza vencida decide. Se cada lado vencer uma, a terceira decide; empate na terceira favorece quem venceu a primeira. Três empates favorecem quem abriu a mão.</p></div></div><h3>Da mais forte à mais fraca</h3><ol className="rank-list"><li>1 de espadas</li><li>1 de paus</li><li>7 de espadas</li><li>7 de ouros</li><li>Todos os 3</li><li>Todos os 2</li><li>1 de copas e ouros</li><li>Todos os 12</li><li>Todos os 11</li><li>Todos os 10</li><li>7 de copas e paus</li><li>Todos os 6</li><li>Todos os 5</li><li>Todos os 4</li></ol><p className="fine-print">Cartas do mesmo grupo empatam. A saída inicial passa ao próximo lugar a cada nova mão. Sem envido, flor, aumentos de aposta ou dinheiro. O servidor distribui as cartas, valida os turnos e calcula o resultado. Todos confirmam o início, a próxima vaza e a próxima mão.</p><button className="primary" onClick={()=>setModal(null)}>Combinado <span>→</span></button></>}
       {modal==='credits' && <><div className="eyebrow">ARTE QUE CHEGA À MESA</div><h2 id="dialog-title">Créditos das cartas.</h2><p>Arte: Basquetteur e colaboradores, com trabalho de Germarquezm, via Wikimedia Commons. Vetorização e distribuição SVG: gjenkins20.</p><p>Imagens sob <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noreferrer">CC BY-SA 3.0 ↗</a>. O pacote fornecido renomeou, converteu e ajustou fundos e margens. O Neuro usa os PNGs web sem novas alterações nos arquivos.</p><div className="credit-links"><a href="https://commons.wikimedia.org/wiki/File:Baraja_espa%C3%B1ola_completa.png" target="_blank" rel="noreferrer">Arte de origem ↗</a><a href="https://github.com/gjenkins20/spanish-playing-cards-svg" target="_blank" rel="noreferrer">Distribuidor SVG ↗</a><a href="/cards/LEIA-ME.md" target="_blank">Documentação do pacote ↗</a><a href="/cards/FONTE_README_ORIGINAL.md" target="_blank">Documentação original ↗</a></div><p className="fine-print">Cenário original do Neuro inspirado na imagem de referência do usuário. Nenhum baralho foi gerado.</p></>}
-      {modal==='code' && <><div className="eyebrow">TEM ALGUÉM TE ESPERANDO?</div><h2 id="dialog-title">Encontre sua mesa.</h2><p>Digite o código de seis caracteres que aparece na comanda do seu amigo.</p><form onSubmit={join} noValidate><label htmlFor="room-code">Código da mesa</label><input className="code-input" id="room-code" value={code} onChange={e=>{setCode(e.target.value.toUpperCase());setError('');}} maxLength={6} autoComplete="off" placeholder="ABC234" aria-invalid={!!error} aria-describedby={error?'code-error':undefined}/>{error && <p className="form-error" id="code-error" role="alert">{error}</p>}<button className="primary full" type="submit" disabled={online.busy||online.connection!=='online'}>Sentar à mesa <span>→</span></button></form><p className="fine-print">Use outra sessão de navegador para o segundo jogador.</p></>}
+      {modal==='team' && pendingTable && <><div className="eyebrow">MESA SELECIONADA</div><h2 id="dialog-title">Escolha sua dupla.</h2><p>{pendingTable.joinCode?`Mesa ${pendingTable.joinCode}`:`Mesa ${pendingTable.visual==='MESA02'?'02':'01'} · nova partida`}. Cada dupla tem duas vagas.</p><div className="join-team-picker" role="group" aria-label="Escolha sua dupla">{([0,1] as const).map(team=><button type="button" key={team} aria-pressed={teamChoice===team} disabled={pendingTable.joinCode?pendingTeamRoom?.teamCounts[team]>=2:teamCount(team)>=2} onClick={()=>setTeamChoice(team)}>{`Dupla ${team+1} · ${teamCount(team)}/2`}</button>)}</div>{error&&<p className="form-error" role="alert">{error}</p>}<button className="primary full" disabled={online.busy||online.connection!=='online'||pendingTeamFull} onClick={()=>void sit(pendingTable.visual,pendingTable.joinCode??undefined,teamChoice)}>{pendingTable.joinCode?'Entrar na mesa':'Criar mesa'} <span>→</span></button><p className="fine-print">A escolha da dupla só vale para mesas 2x2.</p></>}
+      {modal==='code' && <><div className="eyebrow">TEM ALGUÉM TE ESPERANDO?</div><h2 id="dialog-title">Encontre sua mesa.</h2><p>Digite o código de seis caracteres que aparece na comanda do seu amigo.</p><form onSubmit={join} noValidate><label htmlFor="room-code">Código da mesa</label><input className="code-input" id="room-code" value={code} onChange={e=>{setCode(e.target.value.toUpperCase());setError('');}} maxLength={6} autoComplete="off" placeholder="ABC234" aria-invalid={!!error} aria-describedby={error?'code-error':undefined}/>{error && <p className="form-error" id="code-error" role="alert">{error}</p>}<button className="primary full" type="submit" disabled={online.busy||online.connection!=='online'}>Escolher mesa <span>→</span></button></form></>}
     </dialog>
   </div>;
+}
+
+function ModePicker({value,onChange}:{value:2|4;onChange:(count:2|4)=>void}){
+  return <div className="mode-picker-wrap"><div className="mode-picker" role="group" aria-label="Quantidade de jogadores por mesa"><span>FORMATO DA MESA</span><button aria-pressed={value===2} onClick={()=>onChange(2)}>1 × 1</button><button aria-pressed={value===4} onClick={()=>onChange(4)}>2x2</button></div></div>;
 }
 
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);

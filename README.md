@@ -1,20 +1,21 @@
 # Neuro — Bar & Truco
 
-**Neuro** é um jogo de truco argentino simplificado para dois jogadores humanos, ambientado em um bar brasileiro em 3D. A experiência começa na porta do bar, passa pelo salão e termina em uma mesa, com cartas, placar e convite por código.
+**Neuro** é um jogo de truco argentino simplificado para dois ou quatro jogadores humanos, ambientado em um bar brasileiro em 3D. No salão, quem cria a mesa escolhe entre duelo (1 × 1) e duplas (2 × 2); o duelo continua sendo o padrão. A experiência começa na porta do bar, passa pelo salão e termina em uma mesa, com cartas, placar e convite por código.
 
 O projeto foi desenvolvido para a disciplina de **Sistemas Distribuídos**. Além do jogo, implementa três servidores que se comunicam, elegem um líder, replicam o estado das partidas e recuperam a execução após a falha de um nó.
 
 ## Funcionalidades
 
 - Entrada por apelido, criação de mesa e convite por código.
-- Partidas online entre duas sessões de navegador, com turnos validados pelo servidor.
+- Partidas online entre duas ou quatro sessões de navegador, com turnos validados pelo servidor.
+- Modalidade opcional de duplas: quatro lugares alternados, placar compartilhado por equipe e confirmação de todos os jogadores.
 - Distribuição de cartas, resolução de empates, placar até cinco vitórias e revanche.
 - Reconexão à mesma mesa, preservando cartas, placar e turno confirmados.
 - Cenário em primeira pessoa, caminhada guiada e mesas em perspectiva.
 - Quadro de regras e painel técnico acessível pelo banheiro do bar.
 - Opções de câmera estável, gráficos leves e cenário ilustrado de contingência.
 
-Os jogadores ao fundo do salão são elementos decorativos. O adversário sentado à sua mesa é outro jogador conectado.
+Os jogadores ao fundo do salão são elementos decorativos. Os lugares na mesa são participantes conectados da partida.
 
 ## Tecnologias
 
@@ -124,10 +125,10 @@ Confira `ready: true` em todos e o mesmo `leaderId`. Com os três aptos e a elei
 
 Para jogar:
 
-1. Abra dois navegadores, perfis ou uma janela normal e outra anônima.
-2. Entre com os apelidos. Um jogador cria a mesa e compartilha o código da comanda.
-3. O segundo entra pelo código ou pela lista de mesas do salão.
-4. Os dois confirmam “Estou pronto”. As próximas vazas, mãos e a revanche também exigem confirmação dos dois.
+1. Abra duas sessões para o duelo ou quatro sessões para jogar em duplas; use navegadores, perfis ou janelas anônimas separados.
+2. Entre com os apelidos. Quem cria a mesa escolhe “1 × 1” ou “2 × 2” no salão; no segundo formato, escolhe também sua dupla e compartilha o código da comanda.
+3. Os demais entram pelo código ou pela lista de mesas e escolhem uma dupla com vaga disponível. Os lugares são alternados: 1 e 3 contra 2 e 4.
+4. Todos confirmam “Estou pronto”. As próximas vazas, mãos e a revanche também exigem confirmação de todos os participantes.
 
 A sessão fica em `sessionStorage`: atualizar a mesma aba permite retomar a mesa. Fechar a aba pode perder a credencial de retomada. Evite duplicar uma aba conectada para criar o segundo jogador, pois o navegador pode copiar seu armazenamento de sessão.
 
@@ -135,7 +136,7 @@ Para desligar os serviços, use `docker compose stop`; para retomá-los, `docker
 
 ## Regras do jogo
 
-A modalidade é **truco argentino simplificado, por vitórias**: baralho espanhol de 40 cartas, três cartas por jogador e até três vazas por mão. Cada mão vencida soma uma vitória; vence quem alcançar cinco. A saída da mão alterna entre os jogadores. Não há envido, flor ou aumentos de aposta.
+A modalidade é **truco argentino simplificado, por vitórias**: baralho espanhol de 40 cartas, três cartas por jogador e até três vazas por mão. Cada mão vencida soma uma vitória; vence quem alcançar cinco. O duelo mantém um ponto por jogador. Em duplas, os assentos alternam entre as equipes; todos jogam uma carta por vaza, a carta mais forte determina a equipe vencedora, e os pontos são compartilhados pela dupla. A saída inicial passa ao próximo assento a cada mão. Não há envido, flor ou aumentos de aposta.
 
 A hierarquia completa, os empates e a saída de cada vaza estão em [Escopo e regras](docs/01-escopo-regras.md) e no quadro “Como jogar” da interface. O servidor distribui as cartas, valida as jogadas e decide os resultados.
 
@@ -190,7 +191,7 @@ O teste Docker para e recupera um seguidor e o líder, interrompendo as conexõe
 
 ### Demonstrar recuperação
 
-1. Inicie uma partida em duas sessões e abra `http://127.0.0.1:8080/#painel` em uma terceira aba.
+1. Inicie uma partida em duas sessões (duelo) ou quatro sessões (duplas) e abra `http://127.0.0.1:8080/#painel` em outra aba.
 2. Com os três nós prontos e o nó 3 liderando, execute `docker compose stop game-1`. Aguarde a recuperação com dois participantes e continue a partida.
 3. Execute `docker compose start game-1`. Aguarde os três nós prontos, com versões e hashes iguais.
 4. Execute `docker compose stop game-3`. Observe a eleição do nó 2 e a reconexão dos jogadores. Confira cartas, placar e turno.

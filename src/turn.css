@@ -15,3 +15,35 @@
 .player-seat.seat-playing{padding:6px 11px;border-radius:25px}
 @media(max-width:760px){.turn-message .turn-heading{font-size:15px}.three-mode .turn-message.turn-yours,.three-mode .turn-message.turn-opponent{padding:10px 14px}}
 @media(prefers-reduced-motion:reduce){.player-hand .hand-card{transition:none}}
+
+.other-players{position:absolute;inset:0;pointer-events:none;z-index:2}
+.other-player{position:absolute;display:flex;align-items:center;flex-direction:column;gap:5px;width:140px;padding:7px 9px;background:#1b3027dc;border:1px solid #a7ba9b44;border-radius:4px;color:#eee3c7;text-align:center}
+.other-player>span{font-size:10px;overflow-wrap:anywhere}
+.other-player small{display:block;font-size:6px;letter-spacing:.7px;color:#c3cba9;margin-top:3px}
+.other-player .avatar{width:32px;height:32px;font-size:16px}
+.other-player .opponent-hand{height:43px;width:104px;margin:0;gap:2px}
+.other-player .opponent-hand img{height:41px;width:27px}
+.other-player.position-1{left:50%;top:9px;transform:translateX(-50%)}
+.other-player.position-2{right:4%;top:31%}
+.other-player.position-3{left:4%;top:31%}
+.game-four .played-cards{width:90%;gap:clamp(4px,1.2vw,18px)}
+.game-four .played img{width:clamp(42px,5vw,68px)}
+.game-four .chalkboard{width:205px}
+.game-four .chalkboard>div{font-size:11px}
+.game-four .waiting-card{min-width:min(440px,calc(100% - 30px))}
+.partner-play{transform:rotate(-4deg)}
+.mode-picker-wrap,.hall-mode-picker-wrap{position:absolute;left:50%;transform:translateX(-50%);z-index:8;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:auto}
+.mode-picker-wrap{top:224px}.hall-mode-picker-wrap{top:24%}
+.mode-picker,.hall-mode-picker,.team-choice,.hall-team-choice,.join-team-picker{display:flex;align-items:center;justify-content:center;gap:5px;padding:6px;background:#1d3023ed;border:1px solid #aeb68155;color:#dedfc0;box-shadow:0 5px 18px #101d1666}
+.mode-picker>span,.hall-mode-picker>span,.team-choice>span,.hall-team-choice>span,.join-team-picker>span{font-size:7px;letter-spacing:1px;padding:0 7px;color:#bac39c}
+.mode-picker button,.hall-mode-picker button,.team-choice button,.hall-team-choice button,.join-team-picker button{background:none;color:#dedfc0;font-size:9px;padding:9px 12px;border:1px solid transparent;white-space:nowrap}
+.mode-picker button[aria-pressed=true],.hall-mode-picker button[aria-pressed=true],.team-choice button[aria-pressed=true],.hall-team-choice button[aria-pressed=true],.join-team-picker button[aria-pressed=true]{background:#687748;color:#fff0cb;border-color:#d4bf7a88}
+.join-team-picker{margin:12px 0;flex-wrap:wrap}
+.join-team-picker button:disabled{opacity:.45;text-decoration:line-through}
+.live-room{padding:8px 0;border-bottom:1px solid #bda45b44;display:flex;flex-direction:column;gap:5px}
+.live-room>strong{font-size:.78rem;letter-spacing:.04em}
+.live-room>span{font-size:.68rem}
+.live-room-teams{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.live-rooms .live-room button{font-size:.66rem;line-height:1.3;padding:6px 4px;text-align:center;border:1px solid #bda45b44}
+.live-rooms .live-room button:disabled{opacity:.45}
+@media(max-width:760px){.mode-picker-wrap{top:240px;gap:3px}.mode-picker>span,.hall-mode-picker>span,.team-choice>span,.hall-team-choice>span,.join-team-picker>span{font-size:6px}.mode-picker button,.hall-mode-picker button,.team-choice button,.hall-team-choice button,.join-team-picker button{font-size:8px;padding:8px}.other-player{width:91px;padding:5px 4px}.other-player.position-2{right:1%;top:34%}.other-player.position-3{left:1%;top:34%}.other-player>span{font-size:8px}.other-player small{font-size:5px}.other-player .opponent-hand{transform:scale(.72);height:33px}.game-four .chalkboard{width:110px}.game-four .chalkboard>div{font-size:8px}.game-four .played-cards{top:40%;gap:3px}.game-four .played img{width:clamp(38px,12vw,55px)}.game-four .waiting-card{top:45%;padding:22px 14px}}

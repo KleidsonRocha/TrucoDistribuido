@@ -67,10 +67,10 @@ export function BarDoor({nickname,error,walking,onNickname,onEnter,onRules}:Door
 }
 
 type HallProps={
-  nickname:string; approaching:boolean;onSit:(code?:string)=>void;
+  nickname:string; approaching:boolean;playerCount:2|4;onPlayerCount:(count:2|4)=>void;onSit:(code?:string)=>void;
   onCode:()=>void;onRules:()=>void;onBathroom:()=>void;
 };
-export function BarHall({nickname,approaching,onSit,onCode,onRules,onBathroom}:HallProps) {
+export function BarHall({nickname,approaching,playerCount,onPlayerCount,onSit,onCode,onRules,onBathroom}:HallProps) {
   return <section className={`hall-world ${approaching?'walking-to-table':''}`} aria-label="Salão do Neuro em primeira pessoa">
     <div className="first-person-camera">
       <svg className="world-art hall-art" viewBox="0 0 1600 1000" preserveAspectRatio="none" aria-hidden="true">
@@ -106,6 +106,7 @@ export function BarHall({nickname,approaching,onSit,onCode,onRules,onBathroom}:H
         <g transform="translate(817 565)"><path d="M-24 0H24L18 60H-17Z" fill="#88613e"/>{[-36,0,36].map(x=><path key={x} d={`M0 5Q${x-25} -75 ${x} -110Q${x+26} -65 0 5`} fill="#4b6340"/>)}</g>
       </svg>
       <div className="hall-greeting"><span>VOCÊ ENTROU NO NEURO</span><h1>Chega mais, <em>{nickname}.</em></h1><p>Tem jogo rolando. Escolha onde sentar.</p></div>
+      <div className="hall-mode-picker-wrap"><div className="hall-mode-picker" role="group" aria-label="Quantidade de jogadores por mesa"><span>FORMATO DA MESA</span><button aria-pressed={playerCount===2} onClick={()=>onPlayerCount(2)}>1 × 1</button><button aria-pressed={playerCount===4} onClick={()=>onPlayerCount(4)}>2x2</button></div></div>
       <button className="hall-chalk world-button" onClick={onRules} disabled={approaching} aria-label="Ler o quadro de giz: como jogar"><span className="chalk-doodle">✳</span><strong>Como<br/>jogar</strong><small>3 cartas na mão.<br/>5 vitórias na conta.</small><span className="chalk-underline"/><b>Ler as regras ↗</b></button>
       <button className="bathroom-door world-button" onClick={onBathroom} disabled={approaching} aria-label="Entrar no banheiro — painel técnico"><span className="bathroom-sign">WC <i>↗</i></span><span className="wc-symbols">♙ ♙</span><span className="bathroom-handle"/><strong>BANHEIRO</strong><small>Painel técnico<br/>nos bastidores</small></button>
       <div className="live-table-label live-table-left"><i/> Mesa 03 · jogo rolando<small>partida ilustrativa</small></div>

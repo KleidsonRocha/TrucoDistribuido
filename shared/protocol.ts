@@ -2,7 +2,9 @@ import {z} from 'zod';
 
 export const PROTOCOL_VERSION=1;
 export const CardId=z.string().regex(/^(espadas|bastos|oros|copas)_(0[1-7]|1[0-2])$/);
-export const Seat=z.union([z.literal(0),z.literal(1)]);
+export const Seat=z.union([z.literal(0),z.literal(1),z.literal(2),z.literal(3)]);
+export const Team=z.union([z.literal(0),z.literal(1)]);
+export const PlayerCount=z.union([z.literal(2),z.literal(4)]);
 export const EpochSchema=z.strictObject({counter:z.number().int().nonnegative(),leaderId:z.number().int().min(0).max(3)});
 export type Epoch=z.infer<typeof EpochSchema>;
 export const Phase=z.enum(['WAITING','PLAYING','TRICK','HAND_FINISHED','MATCH_FINISHED','ABANDONED']);
@@ -12,12 +14,13 @@ export const CommandSchema=z.strictObject({
   name:CommandName,roomId:z.uuid().nullable(),expectedVersion:z.number().int().nonnegative().nullable(),
   payload:z.discriminatedUnion('kind',[
     z.strictObject({kind:z.literal('EMPTY')}),
-    z.strictObject({kind:z.literal('JOIN'),code:z.string().trim().toUpperCase().regex(/^[A-Z2-9]{6}$/)}),
+    z.strictObject({kind:z.literal('CREATE'),playerCount:PlayerCount,team:Team.optional()}),
+    z.strictObject({kind:z.literal('JOIN'),code:z.string().trim().toUpperCase().regex(/^[A-Z2-9]{6}$/),team:Team.optional()}),
     z.strictObject({kind:z.literal('CARD'),cardId:CardId}),
   ]),
 }).superRefine((command,ctx)=>{
-  const kind=command.name==='JOIN_ROOM'?'JOIN':command.name==='PLAY_CARD'?'CARD':'EMPTY';
-  if(command.payload.kind!==kind)ctx.addIssue({code:'custom',message:'Payload incompatível com o comando.'});
+  const allowed:string[]=command.name==='JOIN_ROOM'?['JOIN']:command.name==='PLAY_CARD'?['CARD']:command.name==='CREATE_ROOM'?['EMPTY','CREATE']:['EMPTY'];
+  if(!allowed.includes(command.payload.kind))ctx.addIssue({code:'custom',message:'Payload incompatível com o comando.'});
 });
 export type ClientCommand=z.infer<typeof CommandSchema>;
 export const HelloSchema=z.strictObject({protocolVersion:z.literal(1),type:z.literal('HELLO'),clientId:z.uuid(),resumeSecret:z.string().regex(/^[a-f0-9]{64}$/),nickname:z.string().trim().min(2).max(20)});
@@ -30,17 +33,19 @@ export const ResultSchema=z.discriminatedUnion('ok',[
 export type CommandResult=z.infer<typeof ResultSchema>;
 const PublicPlayer=z.strictObject({id:z.uuid(),nickname:z.string(),connected:z.boolean(),ready:z.boolean(),advance:z.boolean(),rematch:z.boolean()});
 export const PublicRoomSchema=z.strictObject({
-  id:z.uuid(),code:z.string(),matchId:z.uuid(),phase:Phase,paused:z.boolean(),
+  id:z.uuid(),code:z.string(),matchId:z.uuid(),playerCount:PlayerCount,phase:Phase,paused:z.boolean(),
   handNumber:z.number().int(),trickNumber:z.number().int(),handStarter:Seat,turnSeat:Seat,
-  score:z.tuple([z.number().int(),z.number().int()]),trickResults:z.array(z.union([Seat,z.literal('tie')])),
-  handWinner:Seat.nullable(),matchWinner:Seat.nullable(),played:z.tuple([CardId.nullable(),CardId.nullable()]),
-  you:PublicPlayer.extend({seat:Seat,cards:z.array(CardId)}),opponent:PublicPlayer.extend({cardCount:z.number().int()}).nullable(),
+  score:z.tuple([z.number().int(),z.number().int()]),trickResults:z.array(z.union([z.literal(0),z.literal(1),z.literal('tie')])),
+  handWinner:z.union([z.literal(0),z.literal(1)]).nullable(),matchWinner:z.union([z.literal(0),z.literal(1)]).nullable(),played:z.array(CardId.nullable()),
+  you:PublicPlayer.extend({seat:Seat,team:z.union([z.literal(0),z.literal(1)]),cards:z.array(CardId)}),
+  others:z.array(PublicPlayer.extend({seat:Seat,team:z.union([z.literal(0),z.literal(1)]),cardCount:z.number().int()})),
+  opponent:PublicPlayer.extend({seat:Seat,team:z.union([z.literal(0),z.literal(1)]),cardCount:z.number().int()}).nullable(),
 });
 export type PublicRoom=z.infer<typeof PublicRoomSchema>;
 export const PublicStateSchema=z.strictObject({
   version:z.number().int().nonnegative(),identity:z.strictObject({id:z.uuid(),nickname:z.string()}).nullable(),
   room:PublicRoomSchema.nullable(),
-  rooms:z.array(z.strictObject({id:z.uuid(),code:z.string(),players:z.number().int(),phase:Phase,nicknames:z.array(z.string())})),
+  rooms:z.array(z.strictObject({id:z.uuid(),code:z.string(),playerCount:PlayerCount,players:z.number().int(),teamCounts:z.tuple([z.number().int(),z.number().int()]),phase:Phase,nicknames:z.array(z.string())})),
 });
 export type PublicState=z.infer<typeof PublicStateSchema>;
 export const Role=z.enum(['SYNCING','SYNCED','FOLLOWER','ELECTING','RECOVERING','LEADER','STOPPING']);
