@@ -185,6 +185,8 @@ Esse comando executa a checagem de tipos, a suíte automatizada e o build de pro
 | `npm run test:regression` | Regras e regressões do protótipo e do cenário |
 | `npm run test:docker` | Demonstração de falha com os contêineres do Neuro em execução |
 | `npm run test:production` | Validação da configuração resultante do Compose de produção |
+| `npm run test:demo` | Senha, sessão, gateway, restrição de containers e controles do banheiro |
+| `npm run test:demo:compose` | Configuração opcional da demonstração, sem iniciar containers |
 | `npm run build` | Checagem de tipos e compilação da interface |
 
 O teste Docker para e recupera um seguidor e o líder, interrompendo as conexões durante a demonstração. Execute-o sem uma partida importante em andamento. Os testes de cluster usam processos, portas e diários próprios em `.test-data/`.
@@ -236,6 +238,53 @@ docker compose --env-file .env.production -f compose.yaml -f compose.production.
 ```
 
 Aguarde os três nós prontos e sincronizados antes de parar outro. Para testar a queda do líder, consulte seu ID no painel e use o serviço correspondente (`game-3` quando o nó 3 estiver liderando).
+
+### Controles de demonstração no banheiro
+
+O painel técnico pode parar e religar **containers reais**, mediante senha. Esse modo é opcional e permanece desativado na configuração normal de produção. A consulta de nós, versões, hashes e eventos continua pública; a senha libera apenas os controles de falha.
+
+Na VPS, acrescente uma senha própria, com 8 a 128 caracteres, ao `.env.production` (não use `CLUSTER_TOKEN`):
+
+```dotenv
+DEMO_PASSWORD=SUA_SENHA_DE_DEMONSTRACAO
+```
+
+Ative o terceiro arquivo Compose, sem modificar o Nginx ou apagar volumes:
+
+```bash
+dcdemo() {
+  docker compose --env-file .env.production \
+    -f compose.yaml -f compose.production.yaml -f compose.demo.yaml "$@"
+}
+
+dcdemo config -q && dcdemo up -d --build
+dcdemo ps
+```
+
+Haverá cinco serviços: frontend, três nós e `demo-control`. Após ficarem saudáveis, abra `/#painel` e libere os controles com a senha. A sessão dura 20 minutos e pode ser encerrada pelo botão **Bloquear controles**. A senha é validada no servidor; o navegador recebe um cookie HttpOnly e um token de proteção contra requisições de outra origem. O login permite oito tentativas por minuto no controlador.
+
+Para apresentar:
+
+1. Abra uma partida em outras abas e espere os três nós prontos, com a mesma época, versão e hash.
+2. Pare um seguidor pelo botão do seu nó. Observe a indisponibilidade e continue jogando com dois participantes.
+3. Religue esse container. Aguarde a cópia do estado e a convergência dos hashes antes de outra parada.
+4. Clique em **Parar líder atual**. O maior ID apto entre os sobreviventes é eleito pelo Bully; o painel não força uma promoção nem altera o algoritmo. Com o nó 3 parado, o resultado esperado é o nó 2 liderar.
+5. Continue a partida, confira cartas, turno e placar, e religue o nó parado para mostrar sua sincronização. Ao retornar apto, o nó 3 pode voltar a liderar.
+
+O servidor serializa as ações e permite uma parada apenas com três containers ligados e três nós prontos e sincronizados. Assim, uma segunda parada pelo painel fica bloqueada. Falhas externas ainda podem acontecer durante uma demonstração. Um container parado permanece parado até ser religado, inclusive se a aba for fechada ou a sessão expirar. Nesse caso, desbloqueie novamente ou execute `dcdemo start game-1 game-2 game-3` no terminal.
+
+O controlador identifica somente `game-1`, `game-2` e `game-3` pelos rótulos do projeto Compose `neuro`, revalida os IDs antes da ação e oferece apenas iniciar/parar. Não aceita nomes de outros containers, comandos de shell, remoções ou operações em volumes. Cada ação fica registrada em `dcdemo logs --tail 30 demo-control`; os nós conservam seus eventos de eleição, partida e recuperação.
+
+O acesso ao socket Docker fica em um serviço separado, sem porta publicada e em uma rede interna compartilhada apenas com o gateway. O socket dá privilégios sobre o Docker da VPS ao processo controlador; a restrição aos três serviços é aplicada pelo código, não pelo próprio socket. Use esse modo durante a apresentação e desative-o ao terminar:
+
+```bash
+dcdemo start game-1 game-2 game-3
+dcdemo stop demo-control
+dcdemo rm -f demo-control
+docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml up -d frontend
+```
+
+O último comando recria o gateway com os controles desativados. Para trocar a senha durante uma demonstração, edite `.env.production` e execute `dcdemo up -d demo-control`; as sessões anteriores são invalidadas na recriação do controlador. As rotas internas de injeção de falhas para testes continuam desabilitadas em produção.
 
 ## Garantias e limites
 

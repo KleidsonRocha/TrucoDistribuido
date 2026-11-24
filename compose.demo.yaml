@@ -1,0 +1,37 @@
+# Optional presentation controls. Add after compose.production.yaml.
+services:
+  frontend:
+    environment:
+      DEMO_CONTROLLER_URL: http://demo-control:8090
+    networks: [neuro, demo-control]
+  demo-control:
+    image: neuro-demo-control:local
+    build:
+      context: .
+      target: game
+    command: ["node", "--experimental-strip-types", "server/demo-controller.ts"]
+    user: "0:0"
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?Defina DEMO_PASSWORD com pelo menos 8 caracteres em .env.production}
+      DEMO_COMPOSE_PROJECT: ${COMPOSE_PROJECT_NAME:-neuro}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [demo-control]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/api/demo/session').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "2"
+networks:
+  demo-control:
+    internal: true

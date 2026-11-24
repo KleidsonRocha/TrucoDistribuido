@@ -13,6 +13,7 @@ import './styles.css';
 import './world.css';
 import './world3d.css';
 import './turn.css';
+import './demo.css';
 
 const World3D=lazy(()=>import('./World3D'));
 
