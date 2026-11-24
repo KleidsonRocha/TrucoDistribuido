@@ -15,7 +15,7 @@ O projeto foi desenvolvido para a disciplina de **Sistemas Distribuídos**. Alé
 - Quadro de regras e painel técnico acessível pelo banheiro do bar.
 - Opções de câmera estável, gráficos leves e cenário ilustrado de contingência.
 
-Os jogadores ao fundo do salão são elementos decorativos. Os lugares na mesa são participantes conectados da partida.
+Os jogadores ao fundo do salão são elementos decorativos. Já os lugares à mesa são ocupados por jogadores conectados à partida.
 
 ## Tecnologias
 
