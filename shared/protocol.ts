@@ -25,11 +25,27 @@ export const CommandSchema=z.strictObject({
 export type ClientCommand=z.infer<typeof CommandSchema>;
 export const HelloSchema=z.strictObject({protocolVersion:z.literal(1),type:z.literal('HELLO'),clientId:z.uuid(),resumeSecret:z.string().regex(/^[a-f0-9]{64}$/),nickname:z.string().trim().min(2).max(20)});
 export type Hello=z.infer<typeof HelloSchema>;
-export const ClientMessageSchema=z.union([HelloSchema,CommandSchema]);
+export const WatchRoomSchema = z.strictObject({
+  protocolVersion: z.literal(1),
+  type: z.literal('WATCH_ROOM'),
+  roomId: z.uuid(),
+});
+
+export const UnwatchRoomSchema = z.strictObject({
+  protocolVersion: z.literal(1),
+  type: z.literal('UNWATCH_ROOM'),
+});
+export const ClientMessageSchema = z.union([
+  HelloSchema,
+  CommandSchema,
+  WatchRoomSchema,
+  UnwatchRoomSchema,
+]);
 export const ResultSchema=z.discriminatedUnion('ok',[
   z.strictObject({ok:z.literal(true),version:z.number().int().nonnegative(),roomId:z.uuid().nullable()}),
   z.strictObject({ok:z.literal(false),version:z.number().int().nonnegative(),code:z.string(),message:z.string()}),
 ]);
+
 export type CommandResult=z.infer<typeof ResultSchema>;
 const PublicPlayer=z.strictObject({id:z.uuid(),nickname:z.string(),connected:z.boolean(),ready:z.boolean(),advance:z.boolean(),rematch:z.boolean()});
 export const PublicRoomSchema=z.strictObject({
@@ -47,6 +63,27 @@ export const PublicStateSchema=z.strictObject({
   room:PublicRoomSchema.nullable(),
   rooms:z.array(z.strictObject({id:z.uuid(),code:z.string(),playerCount:PlayerCount,players:z.number().int(),teamCounts:z.tuple([z.number().int(),z.number().int()]),phase:Phase,nicknames:z.array(z.string())})),
 });
+
+export const SpectatorRoomSchema = z.strictObject({
+  id: z.uuid(),
+  code: z.string(),
+  playerCount: PlayerCount,
+  phase: Phase,
+  paused: z.boolean(),
+  handNumber: z.number().int(),
+  trickNumber: z.number().int(),
+  turnSeat: Seat,
+  score: z.tuple([z.number().int(), z.number().int()]),
+  played: z.array(CardId.nullable()),
+  players: z.array(PublicPlayer.extend({
+    seat: Seat,
+    team: Team,
+    cardCount: z.number().int().nonnegative(),
+  })),
+});
+
+export type SpectatorRoom = z.infer<typeof SpectatorRoomSchema>;
+
 export type PublicState=z.infer<typeof PublicStateSchema>;
 export const Role=z.enum(['SYNCING','SYNCED','FOLLOWER','ELECTING','RECOVERING','LEADER','STOPPING']);
 export const EventSchema=z.strictObject({id:z.uuid(),at:z.string(),nodeId:z.number().int(),lamport:z.number().int(),type:z.string(),detail:z.string(),epoch:EpochSchema,index:z.number().int().nonnegative(),commandId:z.string().nullable()});
@@ -66,6 +103,18 @@ export const ServerMessageSchema=z.discriminatedUnion('type',[
   z.strictObject({type:z.literal('STATE'),protocolVersion:z.literal(1),state:PublicStateSchema,cluster:ClusterInfoSchema}),
   z.strictObject({type:z.literal('ACK'),protocolVersion:z.literal(1),commandId:z.uuid(),result:ResultSchema,state:PublicStateSchema,cluster:ClusterInfoSchema}),
   z.strictObject({type:z.literal('ERROR'),protocolVersion:z.literal(1),code:z.string(),message:z.string(),retryable:z.boolean(),commandId:z.string().nullable()}),
+  z.strictObject({
+  protocolVersion: z.literal(1),
+  type: z.literal('SPECTATOR_STATE'),
+  roomId: z.uuid(),
+  version: z.number().int().nonnegative(),
+  room: SpectatorRoomSchema,
+}),
+z.strictObject({
+  protocolVersion: z.literal(1),
+  type: z.literal('SPECTATOR_CLOSED'),
+  roomId: z.uuid(),
+}),
 ]);
 export type ServerMessage=z.infer<typeof ServerMessageSchema>;
 export const RuntimeConfigSchema=z.strictObject({nodes:z.array(z.strictObject({id:z.number().int(),path:z.string().startsWith('/nodes/')})).min(3),phase:z.literal(2)});

@@ -1,4 +1,4 @@
-export type WorldView = 'entrada'|'salao'|'mesa'|'painel';
+export type WorldView = 'entrada' | 'salao' | 'mesa' | 'painel' | 'espectador';
 export type Journey = 'entry'|'table'|'bathroom'|null;
 export type Point = [number,number,number];
 export type CameraPose = { position:Point; lookAt:Point };
@@ -14,8 +14,9 @@ export function bathroomToWorld([x,y,z]:Point):Point {
 export const BATHROOM_WAYPOINTS:Point[]=[[0,1.72,-3],[0,1.72,-5.75],[4.6,1.72,-6.4],[6,1.72,-6.4]];
 export const TABLES={NEURO1:[-2.25,0,-4.2],MESA02:[2.25,0,-4.2]} satisfies Record<string,Point>;
 
-export function cameraFov(view:WorldView,aspect:number):number {
-  return aspect<.85?(view==='entrada'?50:view==='mesa'?67:94):58;
+export function cameraFov(view: WorldView, aspect: number): number {
+  if (view === 'espectador') return aspect < .85 ? 68 : 47;
+  return aspect < .85 ? (view === 'entrada' ? 50 : view === 'mesa' ? 67 : 94) : 58;
 }
 
 export function cameraPose(view:WorldView,room:string='NEURO1'):CameraPose {
@@ -25,6 +26,7 @@ export function cameraPose(view:WorldView,room:string='NEURO1'):CameraPose {
     case 'salao':return {position:[0,1.72,.75],lookAt:[0,1.5,-7]};
     case 'mesa':return {position:[x,1.42,-2.8],lookAt:[x,.87,-4.25]};
     case 'painel':return {position:bathroomToWorld([0,1.7,-1.6]),lookAt:bathroomToWorld([0,1.55,-4.45])};
+    case 'espectador': return { position: [x + 1.95, 1.93, -2.68], lookAt: [x, .98, -4.2] };
   }
 }
 

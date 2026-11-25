@@ -8,12 +8,38 @@ import {Cluster,ClusterError,RpcSchema} from './cluster.ts';
 
 const settings=config();const cluster=new Cluster(settings);
 const clients=new Map<WebSocket,Auth>();
+const spectators = new Map<WebSocket, { roomId: string; version: number }>();
 const responsive=new WeakSet<WebSocket>();
 const send=(socket:WebSocket,message:ServerMessage)=>{if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(message));};
 async function body(request:IncomingMessage){
   const chunks:Buffer[]=[];let size=0;
   for await(const chunk of request){size+=chunk.length;if(size>8*1024*1024)throw new Error('Mensagem interna excede 8 MiB.');chunks.push(Buffer.from(chunk));}
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
+}
+function publishSpectatorView(socket: WebSocket) {
+  const subscription = spectators.get(socket);
+  if (!subscription) return;
+
+  const version = cluster.publicVersion;
+  if (subscription.version === version) return;
+
+  const { roomId } = subscription;
+  const room = cluster.spectatorView(roomId);
+
+  if (!room) {
+    spectators.delete(socket);
+    send(socket, { type: 'SPECTATOR_CLOSED', protocolVersion: 1, roomId });
+    return;
+  }
+
+  subscription.version = version;
+  send(socket, {
+    type: 'SPECTATOR_STATE',
+    protocolVersion: 1,
+    roomId,
+    version,
+    room,
+  });
 }
 const server=createServer(async(request,response)=>{
   const path=new URL(request.url??'/',`http://${request.headers.host}`).pathname;
@@ -36,6 +62,7 @@ server.on('upgrade',(request,socket,head)=>{
   sockets.handleUpgrade(request,socket,head,ws=>sockets.emit('connection',ws,request));
 });
 function drop(socket:WebSocket){
+  spectators.delete(socket);
   const auth=clients.get(socket);clients.delete(socket);
   if(auth&&![...clients.values()].some(other=>other.key===auth.key))cluster.presence.delete(auth.key);
 }
@@ -59,8 +86,34 @@ sockets.on('connection',socket=>{
         clients.set(socket,auth);cluster.presence.add(auth.key);clearTimeout(helloTimeout);
         send(socket,{type:'WELCOME',protocolVersion:1,state:cluster.view(auth.key),cluster:cluster.info});return;
       }
-      const auth=clients.get(socket);
-      if(!auth){send(socket,{type:'ERROR',protocolVersion:1,code:'NO_SESSION',message:'Identifique a sessão primeiro.',retryable:false,commandId:message.commandId});return;}
+      const auth = clients.get(socket);
+if (!auth) {
+  send(socket, {
+    type: 'ERROR',
+    protocolVersion: 1,
+    code: 'NO_SESSION',
+    message: 'Identifique a sessão primeiro.',
+    retryable: false,
+    commandId: message.type === 'COMMAND' ? message.commandId : null,
+  });
+  return;
+}
+
+if (message.type === 'WATCH_ROOM') {
+  if (!cluster.ready) {
+    socket.close(1013, 'Cluster recovering');
+    return;
+  }
+
+  spectators.set(socket, { roomId: message.roomId, version: -1 });
+  publishSpectatorView(socket);
+  return;
+}
+
+if (message.type === 'UNWATCH_ROOM') {
+  spectators.delete(socket);
+  return;
+}
       try{
         const receipt=await cluster.submit(auth,message);
         send(socket,{type:'ACK',protocolVersion:1,commandId:message.commandId,...receipt,cluster:cluster.info});
@@ -78,6 +131,8 @@ cluster.onChange=()=>{
   for(const [socket,auth] of clients){
     if(!cluster.ready){send(socket,{type:'ERROR',protocolVersion:1,code:'NO_WRITABLE_LEADER',message:'Eleição em andamento. Reconectando com a partida preservada.',retryable:true,commandId:null});socket.close(1013,'Cluster election');continue;}
     send(socket,{type:'STATE',protocolVersion:1,state:cluster.view(auth.key),cluster:cluster.info});
+    send(socket,{type:'STATE',protocolVersion:1,state:cluster.view(auth.key),cluster:cluster.info});
+    publishSpectatorView(socket);
   }
 };
 const ping=setInterval(()=>{for(const socket of sockets.clients){if(!responsive.has(socket)){socket.terminate();continue;}if(socket.readyState===WebSocket.OPEN){responsive.delete(socket);socket.ping();}}},15_000);ping.unref();

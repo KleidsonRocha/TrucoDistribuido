@@ -5,11 +5,13 @@ import { CatmullRomCurve3, Group, Mesh, Object3D, Vector3, Quaternion, Matrix4, 
 import { CanvasFallback, GraphicsFallback } from './SceneBoundary';
 import { BAR_SHELF, BATHROOM, BATHROOM_FRAME_WIDTH, BATHROOM_WAYPOINTS, RULES_BOARD, cameraFov, cameraPose, journeyView, JOURNEY_MS, TABLES, type WorldView, type Journey, type Point } from './scene/layout';
 import { worldTextures, type WorldTextures } from './scene/textures';
+import type { SpectatorRoom } from '../shared/protocol';
 
 export type World3DProps={
   view:WorldView;journey:Journey;room:string;stable:boolean;lowQuality:boolean;
   opponentPresent:boolean;onDoorClick:()=>void;
   onRules:()=>void;onBathroom:()=>void;onSit:(code?:string)=>void;onCode:()=>void;onUse2D:()=>void;
+  spectatorRoom?: SpectatorRoom | null;
 };
 
 export default function World3D(props:World3DProps) {
@@ -145,7 +147,12 @@ function BarGeometry(props:World3DProps&{interactionReady:boolean}) {
     </group>)}
     {Object.entries(TABLES).map(([code,at],i)=><group key={code} position={at}>
       <Table maps={maps} onClick={busy?()=>props.onSit(code):undefined}/>
-      <Chair at={[0,0,1.05]}/><Chair at={[0,0,-1.05]} rotation={Math.PI}/>
+        {props.view === 'espectador' && props.room === code
+    ? <SpectatedSeats room={props.spectatorRoom} />
+    : <>
+        <Chair at={[0, 0, 1.05]} />
+        <Chair at={[0, 0, -1.05]} rotation={Math.PI} />
+      </>}
       {props.view==='mesa'&&props.room===code&&props.opponentPresent&&<Patron at={[0,0,-1.05]} shirt="#687c50" animated={!props.stable}/>}
       {busy&&<Html center position={[0,1.15,.25]} distanceFactor={5.2} zIndexRange={[8,0]}><button className="three-table-note" onClick={()=>props.onSit(code)}><span>MESA 0{i+1} · LIVRE</span><strong>{i===0?'Puxe uma cadeira.':'Essa também é sua.'}</strong><small>Criar mesa e sentar →</small></button></Html>}
     </group>)}
@@ -226,6 +233,58 @@ function Patron({at,rotation=0,shirt,animated,offset=0}:{at:Point;rotation?:numb
     <group ref={arm} position={[.23,.95,.04]}><Box at={[0,-.06,.2]} size={[.11,.12,.5]} color="#bc9471" rotation={[-.1,0,.12]}/></group>
     {[-.12,.12].map(x=><Box key={x} at={[x,.45,.2]} size={[.15,.16,.48]} color="#3b4939"/>)}
   </group>;
+}
+
+const SPECTATOR_SEATS: {
+  position: Point;
+  rotation: number;
+  card: Point;
+}[] = [
+  { position: [0, 0, 1.05], rotation: Math.PI, card: [0, .855, .29] },
+  { position: [0, 0, -1.05], rotation: 0, card: [0, .855, -.29] },
+  { position: [-1.25, 0, 0], rotation: Math.PI / 2, card: [-.37, .855, 0] },
+  { position: [1.25, 0, 0], rotation: -Math.PI / 2, card: [.37, .855, 0] },
+];
+
+function SpectatedSeats({ room }: { room?: SpectatorRoom | null }) {
+  const seats = room?.playerCount === 4
+    ? [SPECTATOR_SEATS[0], SPECTATOR_SEATS[2], SPECTATOR_SEATS[1], SPECTATOR_SEATS[3]]
+    : SPECTATOR_SEATS.slice(0, 2);
+
+  return <>{seats.map(({ position, rotation, card }, seat) => {
+    const player = room?.players.find(item => item.seat === seat);
+    const played = room?.played[seat];
+
+    return (
+      <group key={seat}>
+        <Chair at={position} rotation={rotation - Math.PI} />
+        {player && (
+          <Patron
+            at={position}
+            rotation={rotation}
+            shirt={player.team === 0 ? '#68825c' : '#a67254'}
+            animated={false}
+          />
+        )}
+        {played && (
+          <Suspense fallback={null}>
+            <RevealedCard id={played} at={card} />
+          </Suspense>
+        )}
+      </group>
+    );
+  })}</>;
+}
+
+function RevealedCard({ id, at }: { id: string; at: Point }) {
+  const texture = useTexture(`/cards/${id}.png`);
+
+  return (
+    <mesh position={at} rotation={[-Math.PI / 2, 0, -.4]}>
+      <planeGeometry args={[.22, .34]} />
+      <meshBasicMaterial map={texture} toneMapped={false} transparent />
+    </mesh>
+  );
 }
 
 function AmbientCards({offset,stable}:{offset:number;stable:boolean}) {

@@ -1,6 +1,6 @@
 import {randomInt,randomUUID} from 'node:crypto';
 import {z} from 'zod';
-import {CardId,Phase,Seat,PlayerCount,ResultSchema,type ClientCommand,type CommandResult,type PublicState} from '../shared/protocol.ts';
+import {CardId,Phase,Seat,PlayerCount,ResultSchema,type ClientCommand,type CommandResult,type PublicState, type SpectatorRoom} from '../shared/protocol.ts';
 import {cardStrength,handWinner} from '../src/rules.ts';
 
 const IdentitySchema=z.strictObject({id:z.uuid(),nickname:z.string(),roomId:z.uuid().nullable(),online:z.boolean(),deadline:z.number().nullable()});
@@ -178,4 +178,45 @@ export function projectState(state:GameState,key:string,version:number):PublicSt
     view={id:room.id,code:room.code,matchId:room.matchId,playerCount:room.players.length as 2|4,phase:room.phase,paused:!room.players.every(who=>who!==null&&state.identities[who]?.online),handNumber:room.handNumber,trickNumber:room.trickNumber,handStarter:room.handStarter,turnSeat:room.turnSeat,score:room.score,trickResults:room.trickResults,handWinner:room.handWinner,matchWinner:room.matchWinner,played:room.played,you:{...player(identity,seat),seat:seat as 0|1|2|3,team:teamOf(seat),cards:room.hands[seat].filter(card=>!room.used[seat].includes(card))},others,opponent};
   }
   return {version,identity:identity?{id:identity.id,nickname:identity.nickname}:null,room:view,rooms:Object.values(state.rooms).filter(room=>room.phase!=='ABANDONED').map(room=>({id:room.id,code:room.code,playerCount:room.players.length as 2|4,phase:room.phase,players:room.players.filter(Boolean).length,teamCounts:[room.players.filter((key,index)=>key!==null&&teamOf(index)===0).length,room.players.filter((key,index)=>key!==null&&teamOf(index)===1).length] as [number,number],nicknames:room.players.flatMap(key=>key?[state.identities[key].nickname]:[])}))};
+}
+
+export function projectSpectatorRoom(
+  state: GameState,
+  roomId: string,
+): SpectatorRoom | null {
+  const room = state.rooms[roomId];
+
+  if (!room || room.phase === 'ABANDONED' || !room.players.some(Boolean)) {
+    return null;
+  }
+
+  return {
+    id: room.id,
+    code: room.code,
+    playerCount: room.players.length as SpectatorRoom['playerCount'],
+    phase: room.phase,
+    paused: room.phase !== 'WAITING' &&
+      !room.players.every(key => key !== null && state.identities[key]?.online),
+    handNumber: room.handNumber,
+    trickNumber: room.trickNumber,
+    turnSeat: room.turnSeat,
+    score: [room.score[0], room.score[1]],
+    played: [...room.played],
+    players: room.players.flatMap((key, seat) => {
+      if (key === null) return [];
+
+      const identity = state.identities[key];
+      return [{
+        id: identity.id,
+        nickname: identity.nickname,
+        connected: identity.online,
+        ready: room.ready[seat],
+        advance: room.advance[seat],
+        rematch: room.rematch[seat],
+        seat: seat as SpectatorRoom['players'][number]['seat'],
+        team: teamOf(seat),
+        cardCount: room.hands[seat].length - room.used[seat].length,
+      }];
+    }),
+  };
 }

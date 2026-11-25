@@ -9,6 +9,7 @@ import type {ClientCommand} from '../shared/protocol';
 import { SceneBoundary } from './SceneBoundary';
 import { DoorEntryForm } from './DoorEntryForm';
 import { JOURNEY_MS } from './scene/layout';
+import { SpectatorTable } from './SpectatorTable';
 import './styles.css';
 import './world.css';
 import './world3d.css';
@@ -39,6 +40,8 @@ function App() {
   const [connectName,setConnectName]=useState(savedNickname);
   const online=useOnlineGame(connectName);
   const room=online.state.room;
+  const showSpectator = screen === 'salao' && online.watchedRoomId !== null;
+  const unwatchRoom = online.unwatchRoom;
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
   const [approaching,setApproaching]=useState(false);
@@ -87,6 +90,13 @@ function App() {
     }
   },[modal]);
   useEffect(()=>{if(room&&screen!=='mesa'&&screen!=='painel'&&!locked.current){navigate('mesa');}},[room?.id,screen]);
+  useEffect(() => {
+  if (online.spectatorNotice) setNotice(online.spectatorNotice);
+}, [online.spectatorNotice]);
+
+useEffect(() => {
+  if (screen !== 'salao' && online.watchedRoomId) unwatchRoom();
+}, [screen, online.watchedRoomId, unwatchRoom]);
   useEffect(()=>{
     if(!notice)return;
     const timer=setTimeout(()=>setNotice(''),3500);return ()=>clearTimeout(timer);
@@ -153,9 +163,9 @@ function App() {
   const pendingTeamRoom=pendingTable?.joinCode?online.state.rooms.find(item=>item.code===pendingTable.joinCode):null;
   const pendingTeamFull=!!pendingTable?.joinCode&&pendingTeamRoom?.teamCounts[teamChoice]===2;
   const teamCount=(team:0|1)=>pendingTable?.joinCode?pendingTeamRoom?.teamCounts[team]??0:team===teamChoice?1:0;
-  return <div className={`app view-${screen} ${threeD?'three-mode':''} ${approaching?'approaching':''} ${stableCamera||reducedMotion?'camera-stable':''}`}>
+    return <div className={`app view-${showSpectator ? 'espectador' : screen} ${threeD && !showSpectator ? 'three-mode' : ''} ${approaching ? 'approaching' : ''} ${stableCamera || reducedMotion ? 'camera-stable' : ''}`}>
     <a href="#conteudo" className="skip-link" onClick={e=>{e.preventDefault();mainRef.current?.focus();}}>Pular para o conteúdo</a>
-    <header className="site-header">
+    {!showSpectator && <header className="site-header">
       <button className="wordmark" aria-label="Neuro — voltar à entrada" onClick={()=>void leave('entrada')}>neuro<span>BAR &amp; TRUCO</span></button>
       <nav aria-label="Preferências da câmera">
         <button className="camera-toggle" aria-pressed={stableCamera||reducedMotion} disabled={walkingIn||approaching||walkingBathroom||reducedMotion} onClick={()=>setStableCamera(!stableCamera)}><span>{stableCamera?'◉':'◎'}</span> Câmera estável {reducedMotion?'pelo sistema':stableCamera?'ativada':'desativada'}</button>
@@ -163,23 +173,74 @@ function App() {
         {!threeD&&<button className="quality-toggle" onClick={()=>setThreeD(true)}>Tentar cenário 3D ↗</button>}
       </nav>
       <span className="phase-tag"><i/> Truco online · {threeD?'cenário 3D':'versão ilustrada'}</span>
-    </header>
+    </header>}
 
-    {threeD&&<SceneBoundary onUse2D={()=>setThreeD(false)}><Suspense fallback={<div className="world-loading" role="status">Acendendo as luzes do Neuro…</div>}><World3D view={screen} journey={walkingIn?'entry':approaching?'table':walkingBathroom?'bathroom':null} room={tableVisual} stable={stableCamera||reducedMotion} lowQuality={lowQuality} opponentPresent={!!room?.others.length} onRules={()=>openModal('rules')} onBathroom={visitBathroom} onSit={selectTable} onCode={()=>{setCode('');openModal('code');}} onUse2D={()=>setThreeD(false)} onDoorClick={()=>nicknameRef.current?.focus()}/></Suspense></SceneBoundary>}
+    {threeD && (
+  <SceneBoundary onUse2D={() => setThreeD(false)}>
+    <Suspense fallback={
+      <div className="world-loading" role="status">Acendendo as luzes do Neuro…</div>
+    }>
+      <World3D
+        view={showSpectator ? 'espectador' : screen}
+        spectatorRoom={showSpectator ? online.spectatorRoom : null}
+        journey={showSpectator ? null : walkingIn ? 'entry' : approaching ? 'table' : walkingBathroom ? 'bathroom' : null}
+        room={showSpectator ? 'NEURO1' : tableVisual}
+        stable={stableCamera || reducedMotion}
+        lowQuality={lowQuality}
+        opponentPresent={!!room?.others.length}
+        onRules={() => openModal('rules')}
+        onBathroom={visitBathroom}
+        onSit={selectTable}
+        onCode={() => { setCode(''); openModal('code'); }}
+        onUse2D={() => setThreeD(false)}
+        onDoorClick={() => nicknameRef.current?.focus()}
+      />
+    </Suspense>
+  </SceneBoundary>
+)}
 
-    {connectName&&<div className={`connection-strip connection-${online.connection}`} role="status"><span>{online.connection==='online'?(online.busy?'Confirmando sua ação…':'Conectado · pronto para jogar'):online.connection==='recovering'?'Reconectando · sua partida será retomada…':'Conectando aos servidores…'}</span>{online.error&&<span>{online.error}</span>}{online.connection==='offline'&&<button onClick={online.reconnect}>Tentar novamente</button>}</div>}
+    {connectName && !showSpectator && <div className={`connection-strip connection-${online.connection}`} role="status"><span>{online.connection==='online'?(online.busy?'Confirmando sua ação…':'Conectado · pronto para jogar'):online.connection==='recovering'?'Reconectando · sua partida será retomada…':'Conectando aos servidores…'}</span>{online.error&&<span>{online.error}</span>}{online.connection==='offline'&&<button onClick={online.reconnect}>Tentar novamente</button>}</div>}
     <main id="conteudo" ref={mainRef} tabIndex={-1}>
       {screen==='entrada' && (threeD?<section className="three-entry-hud"><h2 className="sr-only">Diante da porta do Neuro</h2>{!walkingIn&&<DoorEntryForm nickname={nickname} error={error} walking={walkingIn} inputRef={nicknameRef} onNickname={value=>{setNickname(value);setError('');}} onEnter={enter}/>}<div className="scene-context"><span>RUA DE TODAS AS NOITES, 40</span><p>Uma noite qualquer.<br/><em>Uma boa mão pela frente.</em></p></div><button className="three-entry-rules" disabled={walkingIn} onClick={()=>openModal('rules')}>Quadro da casa · Como jogar ↗</button></section>:<BarDoor nickname={nickname} error={error} walking={walkingIn} onNickname={value=>{setNickname(value);setError('');}} onEnter={enter} onRules={()=>openModal('rules')}/>)}
 
-      {screen==='salao'&&online.state.rooms.length>0&&<aside className="live-rooms" aria-label="Mesas online"><h2>Mesas no salão</h2>{online.state.rooms.map(item=><div className="live-room" key={item.id}><strong>{item.code} · {item.playerCount===4?'2x2':'1 × 1'}</strong><span>{item.nicknames.join(' × ')} · {item.players}/{item.playerCount}{item.playerCount===4?` · D1 ${item.teamCounts[0]}/2 · D2 ${item.teamCounts[1]}/2`:''}</span><button disabled={item.players>=item.playerCount||item.phase!=='WAITING'||online.busy||online.connection!=='online'} onClick={()=>selectTable('NEURO1',item.code)}>Escolher mesa →</button></div>)}</aside>}
-      {screen==='salao' && (threeD?<section className="three-hall-hud"><div className="hall-context"><span>VOCÊ ENTROU NO NEURO</span><h1>Chega mais, <em>{player}.</em></h1><p>Escolha uma mesa ou explore o bar.</p></div><ModePicker value={playerCount} onChange={setPlayerCount}/><nav className="three-shortcuts" aria-label="Navegar pelo salão"><button disabled={approaching||walkingBathroom} onClick={()=>selectTable()}>Mesa 01 ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>selectTable('MESA02')}>Mesa 02 ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>openModal('rules')}>Quadro de regras ↗</button><button disabled={approaching||walkingBathroom} onClick={visitBathroom}>Banheiro · Painel ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>{setCode('');openModal('code');}}>Tenho um código ↗</button></nav><p className="three-demo-note">Jogadores ao fundo ilustrativos · convide amigos para jogar</p></section>:<BarHall nickname={player} approaching={approaching} playerCount={playerCount} onPlayerCount={setPlayerCount} onSit={selectTable} onCode={()=>{setCode('');openModal('code');}} onRules={()=>openModal('rules')} onBathroom={()=>navigate('painel')}/>)}
+      {screen==='salao' && !showSpectator && online.state.rooms.length>0 && <aside className="live-rooms" aria-label="Mesas online"><h2>Mesas no salão</h2>{online.state.rooms.map(item=><div className="live-room" key={item.id}><strong>{item.code} · {item.playerCount===4?'2x2':'1 × 1'}</strong><span>{item.nicknames.join(' × ')} · {item.players}/{item.playerCount}{item.playerCount===4?` · D1 ${item.teamCounts[0]}/2 · D2 ${item.teamCounts[1]}/2`:''}</span><div className="live-room-actions">
+  <button
+    disabled={
+      item.players >= item.playerCount ||
+      item.phase !== 'WAITING' ||
+      online.busy ||
+      online.connection !== 'online'
+    }
+    onClick={() => selectTable('NEURO1', item.code)}
+  >
+    Escolher mesa →
+  </button>
+
+  {item.players > 0 && item.phase !== 'ABANDONED' && (
+    <button
+      disabled={online.connection !== 'online'}
+      onClick={() => online.watchRoom(item.id)}
+    >
+      Assistir
+    </button>
+  )}
+</div></div>)}</aside>}
+      {screen==='salao' && !showSpectator && (threeD?<section className="three-hall-hud"><div className="hall-context"><span>VOCÊ ENTROU NO NEURO</span><h1>Chega mais, <em>{player}.</em></h1><p>Escolha uma mesa ou explore o bar.</p></div><ModePicker value={playerCount} onChange={setPlayerCount}/><nav className="three-shortcuts" aria-label="Navegar pelo salão"><button disabled={approaching||walkingBathroom} onClick={()=>selectTable()}>Mesa 01 ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>selectTable('MESA02')}>Mesa 02 ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>openModal('rules')}>Quadro de regras ↗</button><button disabled={approaching||walkingBathroom} onClick={visitBathroom}>Banheiro · Painel ↗</button><button disabled={approaching||walkingBathroom} onClick={()=>{setCode('');openModal('code');}}>Tenho um código ↗</button></nav><p className="three-demo-note">Jogadores ao fundo ilustrativos · convide amigos para jogar</p></section>:<BarHall nickname={player} approaching={approaching} playerCount={playerCount} onPlayerCount={setPlayerCount} onSit={selectTable} onCode={()=>{setCode('');openModal('code');}} onRules={()=>openModal('rules')} onBathroom={()=>navigate('painel')}/>)}
+        {showSpectator && (
+  <SpectatorTable
+    room={online.spectatorRoom}
+    connected={online.connection === 'online'}
+    onExit={unwatchRoom}
+    threeD={threeD}
+onReconnect={online.connection === 'offline' ? online.reconnect : undefined}
+  />
+)}
 
       {screen==='mesa' && room && <GameTable room={room} threeD={threeD} connected={online.connection==='online'} busy={online.busy} onCommand={sendCommand} onExit={()=>void leave()} onRules={()=>openModal('rules')} onCopy={copyCode}/>}
       {screen==='mesa'&&!room&&<div className="waiting-card"><h2>Recuperando sua mesa…</h2><button className="secondary" onClick={()=>navigate('salao')}>Voltar ao salão</button></div>}
       {screen==='painel' && <TechnicalPanel threeD={threeD} onExit={()=>navigate('salao')}/>}
     </main>
-    <footer className="site-footer"><span>NEURO <i>✦</i> Feito para jogar junto.</span><span className="footer-disclaimer">Truco argentino simplificado · por vitórias</span><button onClick={()=>openModal('credits')}>Créditos das cartas ↗</button></footer>
-    {notice && <div className="toast" role="status">{notice}</div>}
+{!showSpectator && <footer className="site-footer"><span>NEURO <i>✦</i> Feito para jogar junto.</span><span className="footer-disclaimer">Truco argentino simplificado · por vitórias</span><button onClick={()=>openModal('credits')}>Créditos das cartas ↗</button></footer>}    {notice && <div className="toast" role="status">{notice}</div>}
     <dialog ref={dialogRef} className={`modal ${modal==='rules'?'rules-modal':''}`} onCancel={()=>setModal(null)} onClick={e=>{if(e.target===e.currentTarget)setModal(null);}} aria-labelledby="dialog-title">
       <button className="modal-close" onClick={()=>setModal(null)} aria-label="Fechar janela">×</button>
       {modal==='rules' && <><div className="eyebrow">COMBINADOS DA CASA</div><h2 id="dialog-title">Poucas regras.<br/><em>Boas partidas.</em></h2><p>Truco argentino simplificado, por vitórias. {rulesPlayerCount===4?'Quatro jogadores formam duas duplas em lugares alternados.':'Duas pessoas jogam uma contra a outra.'} Cada jogador recebe três cartas. A primeira dupla ou pessoa a ganhar cinco mãos vence.</p>{rulesPlayerCount===4&&<p>Na modalidade em duplas, todos jogam uma carta por vaza. A carta mais forte define a dupla vencedora; quem ganhar duas vazas leva a mão. As cartas continuam privadas, inclusive as do parceiro.</p>}<div className="rule-grid"><div><b>01 / A mão</b><p>Até três vazas. A maior carta vence a vaza. Quem vence abre a seguinte; se empatar, mantém-se quem abriu.</p></div><div><b>02 / As pardas</b><p>Quem vence a primeira e empata a segunda ganha a mão. Primeira empatada: a próxima vaza vencida decide. Se cada lado vencer uma, a terceira decide; empate na terceira favorece quem venceu a primeira. Três empates favorecem quem abriu a mão.</p></div></div><h3>Da mais forte à mais fraca</h3><ol className="rank-list"><li>1 de espadas</li><li>1 de paus</li><li>7 de espadas</li><li>7 de ouros</li><li>Todos os 3</li><li>Todos os 2</li><li>1 de copas e ouros</li><li>Todos os 12</li><li>Todos os 11</li><li>Todos os 10</li><li>7 de copas e paus</li><li>Todos os 6</li><li>Todos os 5</li><li>Todos os 4</li></ol><p className="fine-print">Cartas do mesmo grupo empatam. A saída inicial passa ao próximo lugar a cada nova mão. Sem envido, flor, aumentos de aposta ou dinheiro. O servidor distribui as cartas, valida os turnos e calcula o resultado. Todos confirmam o início, a próxima vaza e a próxima mão.</p><button className="primary" onClick={()=>setModal(null)}>Combinado <span>→</span></button></>}

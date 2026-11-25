@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
 import {z} from 'zod';
 import {CommandSchema,EpochSchema,Role,type ClientCommand,type ClusterEvent,type ClusterInfo,type CommandResult,type Epoch,type NodeStatus,type PublicState} from '../shared/protocol.ts';
-import {AuthSchema,applyCommand,applyPresence,projectState,type Auth,type GameState} from './state.ts';
+import {AuthSchema,applyCommand,applyPresence,projectState,type Auth,type GameState, projectSpectatorRoom} from './state.ts';
 import {CheckpointSchema,DecisionSchema,DurableStore,OperationSchema,compareEpoch,digest,reconcile,type Checkpoint,type Operation} from './storage.ts';
 import type {Config} from './config.ts';
 import {postJson} from './transport.ts';
@@ -30,6 +30,10 @@ export class Cluster {
   get info():ClusterInfo{return {nodeId:this.config.id,leaderId:this.leaderId,epoch:this.store.checkpoint.installedEpoch,lamport:this.store.lamport,ready:this.ready};}
   get publicVersion(){return this.visible.last?.index??0;}
   view(key:string){return projectState(this.visible.last?.state??{identities:{},rooms:{},dedup:{}},key,this.publicVersion);}
+  spectatorView(roomId: string) {
+  const published = this.visible.last;
+  return published ? projectSpectatorRoom(published.state, roomId) : null;
+}
   private enqueue<T>(work:()=>Promise<T>|T):Promise<T>{const task=this.serial.then(work);this.serial=task.catch(()=>{});return task;}
   event(type:string,detail:string,commandId:string|null=null,stamp?:number){
     // Routine RPC traffic must not evict elections and game events from the demonstration.

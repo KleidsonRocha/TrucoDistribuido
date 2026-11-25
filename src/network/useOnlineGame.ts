@@ -1,9 +1,23 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {CommandSchema,HelloSchema,RuntimeConfigSchema,ServerMessageSchema,type ClientCommand,type ClusterInfo,type CommandResult,type PublicState,type RuntimeConfig} from '../../shared/protocol';
+import {CommandSchema,HelloSchema,RuntimeConfigSchema,ServerMessageSchema,type ClientCommand,type ClusterInfo,type CommandResult,type PublicState,type RuntimeConfig, type SpectatorRoom} from '../../shared/protocol';
 
 export type ConnectionState='idle'|'connecting'|'online'|'recovering'|'offline';
 const EMPTY:PublicState={version:0,identity:null,room:null,rooms:[]};
 const IDENTITY_KEY='neuro.session.v2';const PENDING_KEY='neuro.pending.v2';
+const WATCHED_ROOM_KEY = 'neuro.watched-room.v1';
+
+function readWatchedRoomId() {
+  try { return sessionStorage.getItem(WATCHED_ROOM_KEY); }
+  catch { return null; }
+}
+
+function saveWatchedRoomId(roomId: string | null) {
+  try {
+    if (roomId) sessionStorage.setItem(WATCHED_ROOM_KEY, roomId);
+    else sessionStorage.removeItem(WATCHED_ROOM_KEY);
+  } catch {
+  }
+}
 type Identity={clientId:string;resumeSecret:string};
 function readIdentity():Identity {
   try{const saved=JSON.parse(sessionStorage.getItem(IDENTITY_KEY)??'null') as Identity|null;if(saved&&HelloSchema.safeParse({type:'HELLO',protocolVersion:1,clientId:saved.clientId,resumeSecret:saved.resumeSecret,nickname:'Sessão'}).success)return saved;}catch{/* armazenamento indisponível */}
@@ -23,6 +37,37 @@ export function useOnlineGame(nickname:string){
   const socketRef=useRef<WebSocket|null>(null);const resolver=useRef<{resolve:(value:CommandResult)=>void;reject:(reason:Error)=>void}|null>(null);
   const ackTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const [restart,setRestart]=useState(0);
+  const [watchedRoomId, setWatchedRoomId] = useState(readWatchedRoomId);
+const watchedRoomRef = useRef(watchedRoomId);
+const spectatorVersion = useRef(-1);
+const [spectatorRoom, setSpectatorRoom] = useState<SpectatorRoom | null>(null);
+const [spectatorNotice, setSpectatorNotice] = useState('');
+
+const selectWatchedRoom = useCallback((roomId: string | null) => {
+  watchedRoomRef.current = roomId;
+  spectatorVersion.current = -1;
+  saveWatchedRoomId(roomId);
+  setWatchedRoomId(roomId);
+  setSpectatorRoom(null);
+}, []);
+
+const watchRoom = useCallback((roomId: string) => {
+  const socket = socketRef.current;
+  if (connection !== 'online' || socket?.readyState !== WebSocket.OPEN) return;
+
+  setSpectatorNotice('');
+  selectWatchedRoom(roomId);
+  socket.send(JSON.stringify({ type: 'WATCH_ROOM', protocolVersion: 1, roomId }));
+}, [connection, selectWatchedRoom]);
+
+const unwatchRoom = useCallback(() => {
+  selectWatchedRoom(null);
+
+  const socket = socketRef.current;
+  if (socket?.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: 'UNWATCH_ROOM', protocolVersion: 1 }));
+  }
+}, [selectWatchedRoom]);
   const accept=useCallback((next:PublicState,info:ClusterInfo)=>{
     const prior=clusterRef.current;
     if(prior&&(info.epoch.counter<prior.epoch.counter||(info.epoch.counter===prior.epoch.counter&&info.epoch.leaderId<prior.epoch.leaderId)))return;
@@ -55,9 +100,35 @@ export function useOnlineGame(nickname:string){
           const parsed=ServerMessageSchema.safeParse(input);
           if(!parsed.success){setError('O servidor enviou uma mensagem incompatível.');socket?.close(1002);return;}
           const message=parsed.data;
-          if(message.type==='WELCOME'){
-            failures=0;setConnection('online');setError('');accept(message.state,message.cluster);transmitPending();return;
-          }
+          if (message.type === 'WELCOME') {
+  failures = 0;
+  setConnection('online');
+  setError('');
+  accept(message.state, message.cluster);
+  transmitPending();
+
+  const roomId = watchedRoomRef.current;
+  if (roomId) {
+    socket?.send(JSON.stringify({ type: 'WATCH_ROOM', protocolVersion: 1, roomId }));
+  }
+  return;
+}
+if (message.type === 'SPECTATOR_STATE') {
+  if (message.roomId !== watchedRoomRef.current) return;
+  if (message.version < spectatorVersion.current) return;
+
+  spectatorVersion.current = message.version;
+  setSpectatorRoom(message.room);
+  return;
+}
+
+if (message.type === 'SPECTATOR_CLOSED') {
+  if (message.roomId !== watchedRoomRef.current) return;
+
+  selectWatchedRoom(null);
+  setSpectatorNotice('A mesa foi encerrada.');
+  return;
+}
           if(message.type==='STATE'){accept(message.state,message.cluster);return;}
           if(message.type==='ACK'){
             accept(message.state,message.cluster);
@@ -82,7 +153,7 @@ export function useOnlineGame(nickname:string){
     };
     void connect();
     return ()=>{active=false;if(timer)clearTimeout(timer);if(ackTimer.current)clearTimeout(ackTimer.current);socket?.close();socketRef.current=null;};
-  },[nickname,identity,restart,accept,transmitPending]);
+  },[nickname,identity,restart,accept,transmitPending, selectWatchedRoom]);
 
   const command=useCallback((name:ClientCommand['name'],payload:ClientCommand['payload']={kind:'EMPTY'}):Promise<CommandResult>=>{
     if(pending.current)return Promise.reject(new GameClientError('PENDING_COMMAND','Aguardando confirmação da ação anterior.'));
@@ -92,5 +163,19 @@ export function useOnlineGame(nickname:string){
     pending.current=message;savePending(message);setBusy(true);setError('');
     const promise=new Promise<CommandResult>((resolve,reject)=>{resolver.current={resolve,reject};});transmitPending();return promise;
   },[connection,transmitPending]);
-  return {state,connection,cluster,error,busy,command,clearError:()=>setError(''),reconnect:()=>setRestart(value=>value+1)};
+    return {
+    state,
+    connection,
+    cluster,
+    error,
+    busy,
+    command,
+    watchedRoomId,
+    spectatorRoom,
+    spectatorNotice,
+    watchRoom,
+    unwatchRoom,
+    clearError: () => setError(''),
+    reconnect: () => setRestart(value => value + 1),
+  };
 }
